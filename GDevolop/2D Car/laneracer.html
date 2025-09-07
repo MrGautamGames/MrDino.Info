@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MrDino.Info - Lane Racer</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Montserrat:wght@300;500;700&display=swap">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #0f1a30, #243b55, #1e3c72);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: white;
+        }
+        
+        #game-container {
+            width: 900px;
+            height: 650px;
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+            background: #111a28;
+        }
+        
+        #game-canvas {
+            background: #1e2b3e;
+            display: block;
+        }
+        
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(8, 16, 33, 0.95);
+            z-index: 10;
+            text-align: center;
+            padding: 30px;
+        }
+        
+        #game-screen {
+            display: none;
+            background: transparent;
+        }
+        
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4.5rem;
+            font-weight: 900;
+            margin-bottom: 15px;
+            background: linear-gradient(to right, #00ffcc, #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 25px rgba(0, 255, 204, 0.5);
+            letter-spacing: 3px;
+        }
+        
+        .logo-subtext {
+            font-size: 1.3rem;
+            color: #00ccff;
+            margin-bottom: 50px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+        
+        .btn {
+            background: linear-gradient(to right, #00ffcc, #00ccff);
+            color: #0a1c29;
+            border: none;
+            padding: 18px 45px;
+            font-size: 1.3rem;
+            border-radius: 60px;
+            cursor: pointer;
+            margin: 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            box-shadow: 0 6px 20px rgba(0, 204, 255, 0.4);
+            transition: all 0.3s ease;
+            pointer-events: auto;
+        }
+        
+        .btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 204, 255, 0.6);
+            letter-spacing: 3px;
+        }
+        
+        .btn:active {
+            transform: translateY(2px);
+        }
+        
+        .game-stats {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            color: #00ffcc;
+            text-shadow: 0 0 8px #000;
+            background: rgba(0, 20, 40, 0.7);
+            padding: 15px 25px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border: 1px solid rgba(0, 204, 255, 0.3);
+        }
+        
+        .stat-value {
+            color: #00ccff;
+            font-weight: bold;
+        }
+        
+        .branding {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            color: #00ccff;
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px rgba(0, 204, 255, 0.7);
+        }
+        
+        .controls {
+            display: flex;
+            margin-top: 40px;
+            background: rgba(0, 204, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 204, 255, 0.2);
+        }
+        
+        .control-key {
+            margin: 0 15px;
+            text-align: center;
+        }
+        
+        .key {
+            display: inline-block;
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #0f2b46, #0a1c29);
+            border-radius: 12px;
+            line-height: 70px;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+            color: #00ffcc;
+            border: 1px solid rgba(0, 204, 255, 0.3);
+        }
+        
+        .instruction {
+            margin-top: 40px;
+            max-width: 650px;
+            line-height: 1.7;
+            color: #a0e7ff;
+            font-size: 1.1rem;
+        }
+        
+        .score-display {
+            font-size: 1.8rem;
+            margin: 25px 0;
+            color: #00ffcc;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 15px rgba(0, 255, 204, 0.7);
+        }
+        
+        #mobile-controls {
+            position: absolute;
+            bottom: 25px;
+            width: 100%;
+            display: none;
+            justify-content: space-around;
+            pointer-events: auto;
+        }
+        
+        .mobile-btn {
+            width: 90px;
+            height: 90px;
+            background: rgba(0, 204, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 35px;
+            font-weight: bold;
+            color: white;
+            -webkit-tap-highlight-color: transparent;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 204, 255, 0.3);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .lane-indicator {
+            position: absolute;
+            bottom: 150px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 120px;
+        }
+        
+        .lane-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(0, 204, 255, 0.5);
+            box-shadow: 0 0 15px rgba(0, 204, 255, 0.7);
+            transition: all 0.3s ease;
+        }
+        
+        .lane-dot.active {
+            background: #00ffcc;
+            box-shadow: 0 0 20px #00ffcc;
+            transform: scale(1.5);
+        }
+        
+        .auto-drive-indicator {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: rgba(0, 20, 40, 0.7);
+            padding: 15px 25px;
+            border-radius: 15px;
+            font-family: 'Orbitron', sans-serif;
+            color: #00ffcc;
+            border: 1px solid rgba(0, 204, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .pulse-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #00ffcc;
+            box-shadow: 0 0 10px #00ffcc;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .volume-controls {
+            position: absolute;
+            top: 25px;
+            right: 200px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 20, 40, 0.7);
+            padding: 10px 15px;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 204, 255, 0.3);
+        }
+        
+        .volume-btn {
+            background: rgba(0, 204, 255, 0.3);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+        
+        .volume-btn:hover {
+            background: rgba(0, 204, 255, 0.5);
+            transform: scale(1.1);
+        }
+        
+        .volume-slider {
+            width: 80px;
+            -webkit-appearance: none;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            outline: none;
+        }
+        
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #00ffcc;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .volume-slider::-webkit-slider-thumb:hover {
+            background: #00ccff;
+            transform: scale(1.2);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.4; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+            100% { opacity: 0.4; transform: scale(0.8); }
+        }
+        
+        @media (max-width: 950px) {
+            #game-container {
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+            }
+            
+            .logo {
+                font-size: 3.5rem;
+            }
+            
+            .btn {
+                padding: 15px 35px;
+                font-size: 1.1rem;
+            }
+            
+            #mobile-controls {
+                display: flex;
+            }
+            
+            .controls {
+                flex-wrap: wrap;
+                max-width: 90%;
+            }
+            
+            .control-key {
+                margin: 10px;
+            }
+            
+            .lane-indicator {
+                gap: 80px;
+            }
+            
+            .volume-controls {
+                right: 160px;
+                top: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="900" height="650"></canvas>
+        
+        <!-- Audio element for background music -->
+        <audio id="bgMusic" loop>
+            <source src="https://mrdino.info/Music/game-music-loop-4-144341.mp3" type="audio/mpeg">
+        </audio>
+        
+        <div id="ui-layer">
+            <div id="start-screen" class="screen">
+                <h1 class="logo">MrDino.Info</h1>
+                <p class="logo-subtext">Lane Racer</p>
+                <button id="start-btn" class="btn">Start Game</button>
+                <button id="controls-btn" class="btn">How to Play</button>
+                
+                <div class="branding">
+                    Experience the ultimate racing adventure • www.MrDino.Info
+                </div>
+            </div>
+            
+            <div id="controls-screen" class="screen" style="display: none;">
+                <h2 style="font-size: 2.5rem; color: #00ffcc; margin-bottom: 30px;">How to Play</h2>
+                <div class="instruction">
+                    <p>Your car moves forward automatically! Use A/D or Left/Right arrows to change lanes and avoid obstacles.</p>
+                    <p>Try to survive as long as possible and achieve the highest score!</p>
+                </div>
+                
+                <div class="controls">
+                    <div class="control-key">
+                        <div class="key">A</div>
+                        <div>Left Lane</div>
+                    </div>
+                    <div class="control-key">
+                        <div class="key">→</div>
+                        <div>Right Lane</div>
+                    </div>
+                </div>
+                
+                <button id="back-btn" class="btn">Back to Menu</button>
+            </div>
+            
+            <div id="game-screen" class="screen">
+                <div class="game-stats">
+                    <div>Score: <span id="score" class="stat-value">0</span></div>
+                    <div>Speed: <span id="speed" class="stat-value">0</span> mph</div>
+                    <div>Lane: <span id="lane" class="stat-value">Center</span></div>
+                </div>
+                
+                <div class="auto-drive-indicator">
+                    <div class="pulse-dot"></div>
+                    <span>AUTO DRIVE: ON</span>
+                </div>
+                
+                <div class="volume-controls">
+                    <button class="volume-btn" id="volume-down">-</button>
+                    <input type="range" id="volume-slider" class="volume-slider" min="0" max="1" step="0.1" value="0.7">
+                    <button class="volume-btn" id="volume-up">+</button>
+                    <button class="volume-btn" id="mute-btn">🔊</button>
+                </div>
+                
+                <div class="lane-indicator">
+                    <div class="lane-dot" id="left-dot"></div>
+                    <div class="lane-dot active" id="center-dot"></div>
+                    <div class="lane-dot" id="right-dot"></div>
+                </div>
+                
+                <div id="mobile-controls">
+                    <div class="mobile-btn" id="left-btn">←</div>
+                    <div class="mobile-btn" id="right-btn">→</div>
+                </div>
+            </div>
+            
+            <div id="game-over-screen" class="screen" style="display: none;">
+                <h2 style="font-size: 3rem; color: #00ffcc; margin-bottom: 20px;">Game Over</h2>
+                <div class="score-display">Final Score: <span id="final-score">0</span></div>
+                <div class="score-display">Distance: <span id="final-distance">0</span> m</div>
+                <button id="restart-btn" class="btn">Play Again</button>
+                <button id="menu-btn" class="btn">Main Menu</button>
+                
+                <div class="branding">
+                    Thanks for playing • MrDino.Info
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        let canvas, ctx;
+        let gameActive = false;
+        let score = 0;
+        let speed = 60;
+        let distance = 0;
+        let playerCar;
+        let obstacles = [];
+        let lanes = [];
+        let currentLane = 1;
+        let lastTime = 0;
+        let animationId;
+        let roadMarkings = [];
+        let laneWidth = 0;
+        let obstacleFrequency = 0.02;
+        let roadX = 0;
+        let roadWidth = 0;
+        let bgMusic;
+        let isMuted = false;
+        let lastVolume = 0.7;
+        
+        // Initialize the game
+        function init() {
+            canvas = document.getElementById('game-canvas');
+            ctx = canvas.getContext('2d');
+            bgMusic = document.getElementById('bgMusic');
+            
+            // Set initial volume
+            bgMusic.volume = 0.7;
+            
+            // Adjust canvas size if needed
+            if (window.innerWidth < 950) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            // Calculate road dimensions (centered)
+            roadWidth = canvas.width * 0.7;
+            roadX = (canvas.width - roadWidth) / 2;
+            
+            // Calculate lane positions
+            laneWidth = roadWidth / 3;
+            lanes = [
+                roadX + laneWidth / 2,
+                roadX + laneWidth + laneWidth / 2,
+                roadX + 2 * laneWidth + laneWidth / 2
+            ];
+            
+            playerCar = {
+                x: lanes[1],
+                y: canvas.height - 150,
+                width: 60,
+                height: 110,
+                targetX: lanes[1],
+            };
+            
+            // Initialize road markings
+            for (let i = 0; i < 20; i++) {
+                roadMarkings.push({
+                    y: i * 70,
+                    width: 15,
+                    height: 40
+                });
+            }
+            
+            // Event listeners
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            document.getElementById('controls-btn').addEventListener('click', showControls);
+            document.getElementById('back-btn').addEventListener('click', showMenu);
+            document.getElementById('restart-btn').addEventListener('click', startGame);
+            document.getElementById('menu-btn').addEventListener('click', showMenu);
+            
+            // Volume controls
+            document.getElementById('volume-down').addEventListener('click', () => adjustVolume(-0.1));
+            document.getElementById('volume-up').addEventListener('click', () => adjustVolume(0.1));
+            document.getElementById('volume-slider').addEventListener('input', (e) => {
+                bgMusic.volume = e.target.value;
+                updateVolumeUI();
+            });
+            document.getElementById('mute-btn').addEventListener('click', toggleMute);
+            
+            // Keyboard controls for lane changing
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'a' || e.key === 'A' || e.keyCode === 37) {
+                    switchLane(-1);
+                } else if (e.key === 'd' || e.key === 'D' || e.keyCode === 39) {
+                    switchLane(1);
+                }
+            });
+            
+            // Mobile controls
+            document.getElementById('left-btn').addEventListener('touchstart', () => switchLane(-1));
+            document.getElementById('right-btn').addEventListener('touchstart', () => switchLane(1));
+            
+            // Draw initial screen
+            drawMenu();
+        }
+        
+        // Volume control functions
+        function adjustVolume(change) {
+            let newVolume = bgMusic.volume + change;
+            newVolume = Math.max(0, Math.min(1, newVolume)); // Clamp between 0 and 1
+            bgMusic.volume = newVolume;
+            document.getElementById('volume-slider').value = newVolume;
+            updateVolumeUI();
+        }
+        
+        function toggleMute() {
+            if (isMuted) {
+                bgMusic.volume = lastVolume;
+                isMuted = false;
+            } else {
+                lastVolume = bgMusic.volume;
+                bgMusic.volume = 0;
+                isMuted = true;
+            }
+            document.getElementById('volume-slider').value = bgMusic.volume;
+            updateVolumeUI();
+        }
+        
+        function updateVolumeUI() {
+            const muteBtn = document.getElementById('mute-btn');
+            if (bgMusic.volume === 0) {
+                muteBtn.textContent = '🔇';
+                isMuted = true;
+            } else {
+                muteBtn.textContent = '🔊';
+                isMuted = false;
+            }
+        }
+        
+        // Switch lanes (player controlled)
+        function switchLane(direction) {
+            if (!gameActive) return;
+            
+            currentLane += direction;
+            if (currentLane < 0) currentLane = 0;
+            if (currentLane > 2) currentLane = 2;
+            
+            playerCar.targetX = lanes[currentLane] - playerCar.width / 2;
+            
+            // Update lane indicator
+            document.querySelectorAll('.lane-dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentLane);
+            });
+            
+            // Update lane text
+            const laneText = ['Left', 'Center', 'Right'];
+            document.getElementById('lane').textContent = laneText[currentLane];
+        }
+        
+        // Start the game
+        function startGame() {
+            score = 0;
+            speed = 60;
+            distance = 0;
+            obstacles = [];
+            currentLane = 1;
+            playerCar.x = lanes[1] - playerCar.width / 2;
+            playerCar.targetX = lanes[1] - playerCar.width / 2;
+            playerCar.y = canvas.height - 150;
+            
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('controls-screen').style.display = 'none';
+            document.getElementById('game-over-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            
+            // Reset lane indicator
+            document.querySelectorAll('.lane-dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === 1);
+            });
+            document.getElementById('lane').textContent = 'Center';
+            
+            // Start background music
+            bgMusic.play().catch(e => {
+                console.log("Audio play failed:", e);
+            });
+            
+            gameActive = true;
+            lastTime = 0;
+            
+            // Start game loop
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        // Game loop
+        function gameLoop(timestamp) {
+            if (!gameActive) return;
+            
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update game state
+            update(deltaTime);
+            
+            // Draw game
+            draw();
+            
+            // Continue loop
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        // Update game state
+        function update(deltaTime) {
+            // Smooth lane transition
+            playerCar.x += (playerCar.targetX - playerCar.x) * 0.1;
+            
+            // Gradually increase speed
+            if (speed < 120) {
+                speed += 0.01;
+            }
+            
+            // Increase difficulty over time
+            if (obstacleFrequency < 0.05) {
+                obstacleFrequency += 0.00001;
+            }
+            
+            // Update distance and score
+            distance += speed / 30;
+            score = Math.floor(distance / 10);
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('speed').textContent = Math.floor(speed);
+            
+            // Update road markings
+            for (let i = 0; i < roadMarkings.length; i++) {
+                roadMarkings[i].y += speed / 5;
+                if (roadMarkings[i].y > canvas.height) {
+                    roadMarkings[i].y = -40;
+                }
+            }
+            
+            // Generate obstacles
+            if (Math.random() < obstacleFrequency) {
+                createObstacle();
+            }
+            
+            // Update obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].y += speed / 4;
+                
+                // Remove obstacles that are off screen
+                if (obstacles[i].y > canvas.height) {
+                    obstacles.splice(i, 1);
+                    continue;
+                }
+                
+                // Check for collisions
+                if (checkCollision(playerCar, obstacles[i])) {
+                    gameOver();
+                    return;
+                }
+            }
+        }
+        
+        // Draw game elements
+        function draw() {
+            // Draw sky
+            ctx.fillStyle = '#0a1428';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw stars
+            ctx.fillStyle = '#FFFFFF';
+            for (let i = 0; i < 100; i++) {
+                ctx.beginPath();
+                ctx.arc(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height * 0.7,
+                    Math.random() * 1.5,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+            
+            // Draw roadside
+            ctx.fillStyle = '#2a5c1a'; // Green grass color
+            ctx.fillRect(0, 0, roadX, canvas.height);
+            ctx.fillRect(roadX + roadWidth, 0, canvas.width - (roadX + roadWidth), canvas.height);
+            
+            // Draw road
+            ctx.fillStyle = '#4a4a4a'; // Dark gray road
+            ctx.fillRect(roadX, 0, roadWidth, canvas.height);
+            
+            // Draw lane markings
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(roadX + laneWidth, 0, 5, canvas.height);
+            ctx.fillRect(roadX + 2 * laneWidth - 5, 0, 5, canvas.height);
+            
+            // Draw road markings (center and side lines)
+            ctx.fillStyle = '#FFFF00'; // Yellow center line
+            roadMarkings.forEach(marking => {
+                ctx.fillRect(roadX + roadWidth/2 - marking.width/2, marking.y, marking.width, marking.height);
+            });
+            
+            // Draw white side lines
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(roadX, 0, 3, canvas.height);
+            ctx.fillRect(roadX + roadWidth - 3, 0, 3, canvas.height);
+            
+            // Draw obstacles
+            obstacles.forEach(obstacle => {
+                drawCar(obstacle.x, obstacle.y, obstacle.width, obstacle.height, obstacle.color);
+            });
+            
+            // Draw player car
+            drawPlayerCar(playerCar.x, playerCar.y, playerCar.width, playerCar.height);
+        }
+        
+        // Draw player car
+        function drawPlayerCar(x, y, width, height) {
+            // Car body
+            ctx.fillStyle = '#FF3366';
+            ctx.beginPath();
+            ctx.roundRect(x, y, width, height, 10);
+            ctx.fill();
+            
+            // Car details
+            ctx.fillStyle = '#1a2a3a';
+            ctx.beginPath();
+            ctx.roundRect(x + 8, y + 15, 12, 25, 3);
+            ctx.roundRect(x + width - 20, y + 15, 12, 25, 3);
+            ctx.fill();
+            
+            // Wheels
+            ctx.fillStyle = '#111';
+            ctx.fillRect(x - 5, y + height - 25, 10, 20);
+            ctx.fillRect(x + width - 5, y + height - 25, 10, 20);
+            
+            // Headlights
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(x + 15, y, 7, 0, Math.PI * 2);
+            ctx.arc(x + width - 15, y, 7, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Dino logo on hood
+            ctx.fillStyle = '#00FFCC';
+            ctx.beginPath();
+            ctx.moveTo(x + width/2, y + 30);
+            ctx.lineTo(x + width/2 - 10, y + 45);
+            ctx.lineTo(x + width/2 + 10, y + 45);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Draw obstacle car
+        function drawCar(x, y, width, height, color) {
+            // Car body
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.roundRect(x, y, width, height, 8);
+            ctx.fill();
+            
+            // Car details
+            ctx.fillStyle = '#1a2a3a';
+            ctx.beginPath();
+            ctx.roundRect(x + 6, y + 8, 10, 20, 2);
+            ctx.roundRect(x + width - 16, y + 8, 10, 20, 2);
+            ctx.fill();
+            
+            // Wheels
+            ctx.fillStyle = '#111';
+            ctx.fillRect(x - 4, y + height - 20, 8, 15);
+            ctx.fillRect(x + width - 4, y + height - 20, 8, 15);
+        }
+        
+        // Draw menu screen
+        function drawMenu() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background pattern
+            ctx.fillStyle = '#0a1428';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < 100; i++) {
+                ctx.fillStyle = `rgba(0, 204, 255, ${Math.random() * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    Math.random() * 3,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+            
+            // Draw dino silhouette
+            ctx.fillStyle = 'rgba(0, 80, 100, 0.7)';
+            ctx.beginPath();
+            ctx.ellipse(canvas.width/2, canvas.height/2 + 50, 150, 80, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Create a new obstacle
+        function createObstacle() {
+            const width = 60;
+            const height = 100;
+            const lane = Math.floor(Math.random() * 3);
+            const x = lanes[lane] - width / 2;
+            const colors = ['#4A90E2', '#F5A623', '#50E3C2', '#B8E986', '#BD10E0'];
+            
+            obstacles.push({
+                x: x,
+                y: -height,
+                width: width,
+                height: height,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                lane: lane
+            });
+        }
+        
+        // Check collision between two rectangles
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+        
+        // Game over
+        function gameOver() {
+            gameActive = false;
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('final-distance').textContent = Math.floor(distance);
+            document.getElementById('game-over-screen').style.display = 'flex';
+            document.getElementById('game-screen').style.display = 'none';
+            
+            // Stop background music
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
+            
+            cancelAnimationFrame(animationId);
+        }
+        
+        // Show controls screen
+        function showControls() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('controls-screen').style.display = 'flex';
+        }
+        
+        // Show main menu
+        function showMenu() {
+            gameActive = false;
+            document.getElementById('start-screen').style.display = 'flex';
+            document.getElementById('controls-screen').style.display = 'none';
+            document.getElementById('game-over-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'none';
+            
+            // Stop background music
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
+            
+            cancelAnimationFrame(animationId);
+            drawMenu();
+        }
+        
+        // Initialize game when page loads
+        window.onload = init;
+    </script>
+</body>
+</html>

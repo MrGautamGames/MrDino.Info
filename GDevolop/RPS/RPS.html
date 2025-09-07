@@ -1,0 +1,1081 @@
+<!doctype html>
+<!--
+  whack-a-mole.html
+  -----------------
+  Single-file HTML5 "Whack-a-Mole" game.
+  - Pure HTML/CSS/JS. No external assets or frameworks.
+  - Emoji/SVG only (no images).
+  - Responsive grid (auto: 3x3 / 4x4 / 5x5) based on viewport width.
+  - Modes: Classic (timed), Endless (lives/misses), Speed (fast / multi-mole).
+  - Difficulty scaling: spawnInterval and moleVisibleTime decrease as game progresses.
+  - Visual randomizer: theme sets (animals, monsters, food, etc.) and light background accent each restart.
+  - Accessibility: ARIA labels, keyboard support (number keys map to holes), high-contrast toggle.
+  - UI: Score, Timer, Lives, Mode & Difficulty selectors, Start/Restart, Sound toggle.
+  - Extra: particle burst on hit, haptic feedback (vibrate), simple audio via WebAudio, combo multiplier, localStorage persistence for last mode/difficulty.
+  - Branding: MrDino.Info logo/top-right integrated.
+  - Code structure:
+      HTML: basic UI + grid container
+      CSS: responsive grid, animations (.up pop), high-contrast option
+      JS: game state, hole/mole lifecycle, spawn engine, input handlers, persistence, UI updates
+  Tips for customization:
+    - Change THEMES array in JS to add more emoji sets.
+    - Tweak BASE_SETTINGS to adjust starting speed/duration.
+-->
+
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Whack-a-Mole — MrDino.Info</title>
+<style>
+  :root{
+    --bg:#f6f8fb;
+    --accent:#e7f3ff;
+    --card:#ffffff;
+    --text:#122;
+    --muted:#6b7280;
+    --hit:#34d399;
+    --miss:#fb7185;
+    --ui-radius:14px;
+    --hole-size:clamp(64px, 14vw, 110px);
+    --grid-gap:12px;
+    --logo-size:44px;
+    --shadow: 0 6px 18px rgba(15,23,42,0.08);
+    --pop-translate:-16px;
+  }
+
+  /* High contrast mode (applies when .high-contrast on body) */
+  body.high-contrast {
+    --bg:#0b1220;
+    --card:#071023;
+    --accent:#001f3f;
+    --text:#fffffb;
+    --muted:#cbd5e1;
+    --shadow: none;
+  }
+
+  html,body{
+    height:100%;
+    margin:0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: linear-gradient(180deg,var(--bg), #ffffff 60%);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    box-sizing:border-box;
+  }
+
+  .app {
+    width:100%;
+    max-width:1100px;
+    background:var(--card);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:18px;
+    box-sizing:border-box;
+    display:grid;
+    grid-template-columns: 360px 1fr;
+    gap:18px;
+    align-items:start;
+  }
+
+  /* Top-left branding / info column */
+  .panel {
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .brand {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+
+  .brand-left {
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+
+  .logo {
+    width:var(--logo-size);
+    height:var(--logo-size);
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg,#FDE68A,#FDBA74);
+    font-weight:700;
+    font-size:20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    user-select:none;
+  }
+
+  .brand h1 {
+    margin:0;
+    font-size:1rem;
+    letter-spacing:-0.2px;
+  }
+
+  .brand p { margin:0; color:var(--muted); font-size:0.85rem; }
+
+  /* scoreboard card */
+  .scorecard {
+    padding:12px;
+    border-radius:12px;
+    background: linear-gradient(180deg,var(--accent), rgba(255,255,255,0.6));
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .hud {
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+  }
+
+  .hud .big {
+    font-size:1.5rem;
+    font-weight:700;
+  }
+
+  .hud .small { color:var(--muted); font-size:0.9rem; }
+
+  .controls {
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:6px;
+  }
+
+  select, button, .toggle {
+    border:0;
+    padding:8px 10px;
+    border-radius:10px;
+    background:transparent;
+    cursor:pointer;
+    font-weight:600;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.03);
+    transition:transform .12s ease;
+  }
+
+  button.primary {
+    background:linear-gradient(90deg,#4f46e5,#06b6d4);
+    color:white;
+    box-shadow:0 6px 18px rgba(99,102,241,0.18);
+  }
+
+  button:active, select:active { transform:translateY(1px); }
+
+  .muted { color:var(--muted); font-size:0.9rem; }
+
+  /* Game area */
+  .game-wrap {
+    padding:12px;
+  }
+
+  .game-top {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px;
+  }
+
+  .arena {
+    background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(250,250,250,1));
+    padding:18px;
+    border-radius:14px;
+    box-shadow: inset 0 -6px 12px rgba(0,0,0,0.03);
+  }
+
+  /* Responsive grid columns depend on --cols variable set by JS */
+  .grid {
+    display:grid;
+    gap:var(--grid-gap);
+    grid-template-columns: repeat(var(--cols), 1fr);
+    justify-items:center;
+    align-items:center;
+    padding:18px;
+  }
+
+  .hole {
+    width:var(--hole-size);
+    height:var(--hole-size);
+    background: radial-gradient(circle at 30% 20%, rgba(0,0,0,0.04), transparent 20%), linear-gradient(180deg,#fff,#fafafa);
+    border-radius:14px;
+    display:flex;
+    align-items:end;
+    justify-content:center;
+    overflow:visible;
+    position:relative;
+    box-shadow: 0 8px 18px rgba(2,6,23,0.06);
+    transition:transform .12s ease;
+    cursor:pointer;
+    user-select:none;
+    border: 2px solid rgba(0,0,0,0.03);
+  }
+
+  .hole:active { transform: translateY(2px) scale(.995); }
+
+  /* Mole holder (hidden until .up) */
+  .mole {
+    position:absolute;
+    bottom:-36%;
+    transform: translateY(110%) scale(.9);
+    transition: transform .18s cubic-bezier(.2,.9,.2,1), opacity .12s;
+    opacity:0;
+    will-change:transform,opacity;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: clamp(28px, 6.5vw, 48px);
+    pointer-events:none;
+  }
+
+  .mole.up {
+    transform: translateY(var(--pop-translate)) scale(1);
+    opacity:1;
+    pointer-events:auto;
+    transition-duration:120ms;
+  }
+
+  /* Whack squash */
+  .mole.hit {
+    transform: translateY(calc(var(--pop-translate) + 10px)) scale(.82) rotate(-8deg);
+    transition: transform 120ms ease;
+    opacity:0.98;
+  }
+
+  /* small badge */
+  .badge {
+    background:rgba(0,0,0,0.06);
+    padding:6px 8px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:0.95rem;
+  }
+
+  /* particle burst */
+  .particles {
+    position:absolute;
+    left:50%;
+    top:40%;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+  }
+
+  .particle {
+    position:absolute;
+    font-size:14px;
+    opacity:0.98;
+    transform-origin:center;
+    will-change:transform,opacity;
+    user-select:none;
+  }
+
+  /* footer area controls / small */
+  .small-controls {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    justify-content:flex-end;
+    margin-top:6px;
+  }
+
+  .meta {
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+
+  /* end screen overlay */
+  .overlay {
+    position:absolute;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background: linear-gradient(180deg, rgba(6,8,16,0.28), rgba(6,8,16,0.36));
+    border-radius:12px;
+    z-index:50;
+  }
+
+  .overlay.show { display:flex; }
+
+  .end-card {
+    background: linear-gradient(180deg,#fff,#fbfbff);
+    padding:18px;
+    border-radius:12px;
+    text-align:center;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.12);
+    transform-origin:center;
+    animation: popIn .28s ease;
+  }
+
+  @keyframes popIn {
+    from { transform: translateY(8px) scale(.98); opacity:0; }
+    to { transform: translateY(0) scale(1); opacity:1; }
+  }
+
+  /* confetti simple */
+  .confetti {
+    position:fixed;
+    pointer-events:none;
+    inset:0;
+    z-index:60;
+  }
+
+  /* small responsive handling */
+  @media (max-width:960px) {
+    .app { grid-template-columns: 1fr; }
+    .panel { order:2; }
+  }
+
+  @media (max-width:420px) {
+    :root { --hole-size:72px; --grid-gap:8px; }
+    .brand h1 { font-size:0.95rem; }
+  }
+
+  /* keyboard focus */
+  .hole:focus { outline:3px solid rgba(99,102,241,0.22); }
+</style>
+<body>
+  <main class="app" aria-live="polite">
+    <section class="panel" aria-labelledby="controls-label">
+      <div class="brand">
+        <div class="brand-left">
+          <div class="logo" aria-hidden="true">🦖</div>
+          <div>
+            <h1>MrDino.Info — Whack-a-Mole</h1>
+            <p class="muted">Tap the moles — score points, stay sharp!</p>
+          </div>
+        </div>
+
+        <!-- Small logo + link area -->
+        <div style="text-align:right">
+          <div class="muted" style="font-size:0.8rem">Built for</div>
+          <div style="font-weight:700">MrDino.Info</div>
+        </div>
+      </div>
+
+      <div class="scorecard" role="region" aria-label="Scoreboard">
+        <div class="hud">
+          <div>
+            <div class="small muted">Score</div>
+            <div id="score" class="big">0</div>
+          </div>
+          <div>
+            <div class="small muted">Mode</div>
+            <div id="current-mode" class="small">Classic</div>
+          </div>
+          <div>
+            <div class="small muted">Time / Lives</div>
+            <div id="timer-lives" class="small">60s</div>
+          </div>
+        </div>
+
+        <div class="controls" role="group" aria-label="Game controls">
+          <select id="mode-select" aria-label="Select play mode">
+            <option value="classic">Classic (60s)</option>
+            <option value="endless">Endless (3 misses)</option>
+            <option value="speed">Speed Mode</option>
+          </select>
+
+          <select id="difficulty-select" aria-label="Select difficulty">
+            <option value="easy">Easy</option>
+            <option value="normal" selected>Normal</option>
+            <option value="hard">Hard</option>
+          </select>
+
+          <button id="start-btn" class="primary" aria-pressed="false">Start</button>
+          <button id="restart-btn" title="Restart" aria-label="Restart">Restart</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;margin-top:8px;align-items:center">
+          <div class="muted">Sound</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="sound-toggle" class="toggle" aria-pressed="true">🔊</button>
+            <button id="contrast-toggle" class="toggle" title="Toggle high contrast">⚑</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        <div class="muted">Tips</div>
+        <ul style="margin:0 0 0 18px;padding:0;color:var(--muted)">
+          <li>Use number keys (1..n) to whack corresponding holes.</li>
+          <li>Combo multiplier for consecutive hits increases score.</li>
+          <li>Tap logo for a random theme.</li>
+        </ul>
+      </div>
+
+      <!-- small footer -->
+      <div style="margin-top:auto;font-size:0.85rem;color:var(--muted)">
+        <div>Last mode: <span id="last-mode">—</span></div>
+        <div>Difficulty: <span id="last-diff">—</span></div>
+      </div>
+    </section>
+
+    <section class="game-wrap" aria-labelledby="game-label" style="position:relative">
+      <div class="game-top">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="badge" id="theme-badge" style="font-size:0.9rem">Theme: Animals 🐧</div>
+          <div class="muted" id="difficulty-badge">Difficulty: Normal</div>
+        </div>
+
+        <div class="meta">
+          <div class="muted">Combo: <span id="combo">x1</span></div>
+        </div>
+      </div>
+
+      <div class="arena" role="application" aria-label="Whack area" tabindex="0">
+        <!-- dynamic grid -->
+        <div id="grid" class="grid" style="--cols:4"></div>
+
+        <!-- overlay for end -->
+        <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+          <div class="end-card" id="end-card" role="document">
+            <div id="end-emoji" style="font-size:44px">🎉</div>
+            <h2 id="end-title">Game Over!</h2>
+            <p id="end-text" class="muted">Good job — want to try again?</p>
+            <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+              <button id="replay-btn" class="primary">Replay</button>
+              <button id="end-close">Close</button>
+            </div>
+          </div>
+        </div>
+        <div id="confetti" class="confetti" aria-hidden="true"></div>
+      </div>
+
+      <div class="small-controls" style="margin-top:12px">
+        <div class="muted">Grid: <span id="grid-size">4×4</span></div>
+        <div style="width:18px"></div>
+      </div>
+    </section>
+  </main>
+
+<script>
+/* ============================
+   Whack-a-Mole JS
+   ----------------------------
+   Structure:
+    - Constants / themes / base settings
+    - UI element refs
+    - Game state object
+    - Helpers: rand, shuffle, audio, particles, persistence
+    - Grid/hole creation & keyboard mapping
+    - Mole spawn & lifecycle
+    - Input handlers (click/touch/keyboard)
+    - Mode logic (classic/endless/speed)
+    - Difficulty scaling & combo
+    - End/Replay logic
+   ============================ */
+
+/* ------------------------
+   Constants / Themes
+   ------------------------ */
+const THEMES = [
+  { name: 'Animals', emoji: ['🐶','🐱','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🐸'] },
+  { name: 'Monsters', emoji: ['👾','👻','🤖','👹','👺','☠️','😈','👽','💀','👿'] },
+  { name: 'Food', emoji: ['🍩','🍪','🍎','🍌','🍕','🍔','🍣','🍓','🍉','🌮'] },
+  { name: 'Sea', emoji: ['🐠','🐟','🦀','🦑','🐙','🐬','🐳','🦈','🐡','🪼'] },
+  { name: 'Insects', emoji: ['🐞','🦋','🐝','🕷️','🦗','🦂','🪲','🦟','🪳','🐜'] },
+  { name: 'Faces', emoji: ['😀','😅','😂','😎','🤠','😜','🤯','🤡','🥳','😴'] },
+  { name: 'Space', emoji: ['🚀','🛸','🪐','🌟','☄️','🛰️','🔭','🪂','⭐','🌙'] },
+  { name: 'Plants', emoji: ['🌵','🌷','🌻','🌲','🍀','🌿','🍁','🌼','🌸','🪴'] },
+  { name: 'Sports', emoji: ['⚽','🏀','🏈','🎾','🏓','🏒','🥊','🏄','🚴','🏹'] },
+  { name: 'Cute', emoji: ['🧸','🎀','💎','🌈','🩵','💖','✨','🫧','🎈','🎁'] }
+];
+
+const BASE_SETTINGS = {
+  classicTime: 60,    // seconds
+  startingSpawnInterval: 900, // ms between spawns
+  startingMoleTime: 1200,     // ms mole stays visible
+  spawnAcceleration: 0.98,    // per 10 seconds of play
+  moleTimeAcceleration: 0.96, // per 10 seconds
+  maxSimultaneous: 2
+};
+
+/* ------------------------
+   UI Refs
+   ------------------------ */
+const gridEl = document.getElementById('grid');
+const scoreEl = document.getElementById('score');
+const timerLivesEl = document.getElementById('timer-lives');
+const startBtn = document.getElementById('start-btn');
+const restartBtn = document.getElementById('restart-btn');
+const modeSelect = document.getElementById('mode-select');
+const difficultySelect = document.getElementById('difficulty-select');
+const soundToggle = document.getElementById('sound-toggle');
+const contrastToggle = document.getElementById('contrast-toggle');
+const themeBadge = document.getElementById('theme-badge');
+const difficultyBadge = document.getElementById('difficulty-badge');
+const currentModeEl = document.getElementById('current-mode');
+const overlay = document.getElementById('overlay');
+const endTitle = document.getElementById('end-title');
+const endText = document.getElementById('end-text');
+const endEmoji = document.getElementById('end-emoji');
+const replayBtn = document.getElementById('replay-btn');
+const endCloseBtn = document.getElementById('end-close');
+const comboEl = document.getElementById('combo');
+const gridSizeEl = document.getElementById('grid-size');
+const lastModeEl = document.getElementById('last-mode');
+const lastDiffEl = document.getElementById('last-diff');
+const logo = document.querySelector('.logo');
+
+/* ------------------------
+   Game State
+   ------------------------ */
+let state = {
+  running: false,
+  mode: localStorage.getItem('whack_mode') || 'classic', // classic / endless / speed
+  difficulty: localStorage.getItem('whack_diff') || 'normal', // easy/normal/hard
+  themeIndex: parseInt(localStorage.getItem('whack_theme')) || Math.floor(Math.random()*THEMES.length),
+  score: 0,
+  combo: 1,
+  comboStreak: 0,
+  lastHitTime: 0,
+  timeLeft: BASE_SETTINGS.classicTime,
+  lives: 3,
+  holes: [], // hole objects
+  cols: 4,
+  spawnInterval: BASE_SETTINGS.startingSpawnInterval,
+  moleVisibleTime: BASE_SETTINGS.startingMoleTime,
+  spawnTimer: null,
+  clockTimer: null,
+  startTime: null,
+  elapsed: 0,
+  totalHoles: 16,
+  allowedSimul: BASE_SETTINGS.maxSimultaneous,
+  audioOn: true
+};
+
+/* ------------------------
+   Helpers
+   ------------------------ */
+const rand = (min, max) => Math.floor(Math.random()*(max-min+1))+min;
+const pick = arr => arr[rand(0, arr.length-1)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ------------------------
+   Audio: simple WebAudio beeps
+   ------------------------ */
+const AudioEngine = (() => {
+  let ctx = null;
+  function ensure() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
+  function beep(freq=880, duration=0.06, type='sine', gain=0.08) {
+    if (!state.audioOn) return;
+    try {
+      const c = ensure();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.value = gain;
+      o.connect(g);
+      g.connect(c.destination);
+      o.start();
+      o.stop(c.currentTime + duration);
+      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + duration);
+    } catch(e){ /* audio context blocked */ }
+  }
+  return { beep };
+})();
+
+/* ------------------------
+   Particles on hit
+   ------------------------ */
+function spawnParticles(parentEl, emoji='✨') {
+  const pWrap = document.createElement('div');
+  pWrap.className = 'particles';
+  parentEl.appendChild(pWrap);
+  const count = rand(5,9);
+  for (let i=0;i<count;i++){
+    const p = document.createElement('div');
+    p.className='particle';
+    p.innerText = pick(['✨','★','✦','💥', emoji]);
+    p.style.left = '50%';
+    p.style.top = '40%';
+    pWrap.appendChild(p);
+    const dx = rand(-120,120);
+    const dy = rand(-160, -20);
+    const rot = rand(-640,640);
+    const dur = rand(400,900);
+    p.animate([
+      { transform:`translate(0px,0px) scale(1) rotate(0deg)`, opacity:1 },
+      { transform:`translate(${dx}px,${dy}px) scale(.3) rotate(${rot}deg)`, opacity:0 }
+    ], { duration: dur, easing:'cubic-bezier(.2,.9,.2,1)'});
+    setTimeout(()=>p.remove(), dur);
+  }
+  setTimeout(()=>pWrap.remove(), 1200);
+}
+
+/* ------------------------
+   Persistence
+   ------------------------ */
+function savePrefs(){
+  localStorage.setItem('whack_mode', state.mode);
+  localStorage.setItem('whack_diff', state.difficulty);
+  localStorage.setItem('whack_theme', state.themeIndex);
+  lastModeEl.textContent = state.mode;
+  lastDiffEl.textContent = state.difficulty;
+}
+
+/* ------------------------
+   Grid & Holes
+   ------------------------ */
+function calculateCols(){
+  const w = window.innerWidth;
+  if (w < 480) return 3;
+  if (w < 900) return 4;
+  return 5;
+}
+
+function buildGrid(){
+  // decide columns based on viewport and possibly mode/difficulty
+  const cols = calculateCols();
+  state.cols = cols;
+  // choose total holes: cols x cols if fits, else 3x3..5x5 mapping
+  const rows = cols; // square grid
+  state.totalHoles = cols * rows;
+  gridEl.style.setProperty('--cols', cols);
+  gridEl.innerHTML = '';
+  state.holes = [];
+  for (let i=0;i<state.totalHoles;i++){
+    const hole = document.createElement('button');
+    hole.className = 'hole';
+    hole.setAttribute('aria-label', `Hole ${i+1}`);
+    hole.setAttribute('data-index', i);
+    hole.setAttribute('id', `hole-${i+1}`);
+    hole.setAttribute('role','button');
+    hole.setAttribute('tabindex',0);
+
+    // mole element inside the hole
+    const mole = document.createElement('div');
+    mole.className = 'mole';
+    mole.setAttribute('aria-hidden','true');
+
+    // attach click handler
+    hole.appendChild(mole);
+    gridEl.appendChild(hole);
+
+    // store reference
+    state.holes.push({ holeEl: hole, moleEl: mole, up: false, timeout: null });
+    // click/touch
+    hole.addEventListener('click', (e)=> {
+      e.preventDefault();
+      onWhack(parseInt(hole.dataset.index,10));
+    });
+  }
+
+  // keyboard mapping update info
+  gridSizeEl.textContent = `${cols}×${rows}`;
+}
+
+/* ------------------------
+   Theme & visuals
+   ------------------------ */
+function setRandomTheme(index = null){
+  if (typeof index === 'number') state.themeIndex = index;
+  else state.themeIndex = (Math.floor(Math.random()*THEMES.length));
+  const theme = THEMES[state.themeIndex];
+  themeBadge.textContent = `Theme: ${theme.name} ${theme.emoji[0]}`;
+  // subtle background accent
+  const hue = rand(180,340);
+  document.documentElement.style.setProperty('--accent', `linear-gradient(180deg, hsl(${hue} 80% 95%), rgba(255,255,255,0.7))`);
+  savePrefs();
+}
+
+/* clicking logo cycles theme */
+logo.addEventListener('click', ()=> setRandomTheme((state.themeIndex+1)%THEMES.length));
+
+/* ------------------------
+   Game engine: Spawn & lifecycle
+   ------------------------ */
+function startGame(){
+  if (state.running) return;
+  // read selected mode/difficulty
+  state.mode = modeSelect.value;
+  state.difficulty = difficultySelect.value;
+  savePrefs();
+  // initial params
+  state.score = 0;
+  state.combo = 1;
+  state.comboStreak = 0;
+  state.timeLeft = BASE_SETTINGS.classicTime;
+  state.lives = (state.mode === 'endless') ? 3 : 3;
+  state.spawnInterval = BASE_SETTINGS.startingSpawnInterval;
+  state.moleVisibleTime = BASE_SETTINGS.startingMoleTime;
+  // difficulty modifiers
+  if (state.difficulty === 'easy') {
+    state.spawnInterval *= 1.25;
+    state.moleVisibleTime *= 1.25;
+    state.allowedSimul = Math.max(1, BASE_SETTINGS.maxSimultaneous - 1);
+  } else if (state.difficulty === 'hard') {
+    state.spawnInterval *= 0.8;
+    state.moleVisibleTime *= 0.8;
+    state.allowedSimul = BASE_SETTINGS.maxSimultaneous + 1;
+  } else {
+    state.allowedSimul = BASE_SETTINGS.maxSimultaneous;
+  }
+
+  // speed mode special
+  if (state.mode === 'speed'){
+    state.spawnInterval *= 0.6;
+    state.moleVisibleTime *= 0.85;
+    state.allowedSimul = Math.max(2, state.allowedSimul+1);
+  }
+
+  // prepare UI
+  state.running = true;
+  startBtn.textContent = 'Playing…';
+  startBtn.setAttribute('aria-pressed','true');
+  currentModeEl.textContent = state.mode.charAt(0).toUpperCase()+state.mode.slice(1);
+  difficultyBadge.textContent = 'Difficulty: ' + (state.difficulty.charAt(0).toUpperCase()+state.difficulty.slice(1));
+  scoreEl.textContent = state.score;
+  comboEl.textContent = `x${state.combo}`;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+  setRandomTheme(state.themeIndex);
+
+  // create grid fresh
+  buildGrid();
+
+  // start timers
+  state.startTime = Date.now();
+  if (state.mode === 'classic'){
+    // show initial time
+    timerLivesEl.textContent = `${state.timeLeft}s`;
+    state.clockTimer = setInterval(()=> {
+      state.timeLeft = Math.max(0, BASE_SETTINGS.classicTime - Math.floor((Date.now() - state.startTime)/1000));
+      timerLivesEl.textContent = `${state.timeLeft}s`;
+      if (state.timeLeft <= 0) {
+        endGame(true);
+      }
+    }, 250);
+  } else if (state.mode === 'endless') {
+    timerLivesEl.textContent = `❤ ${state.lives}`;
+  } else if (state.mode === 'speed') {
+    timerLivesEl.textContent = `Speed Mode`;
+  }
+
+  // spawn loop using recursive timeout
+  (function spawnLoop(){
+    if (!state.running) return;
+    spawnMoles();
+    // accelerate spawn interval slightly over time
+    const elapsed = (Date.now() - state.startTime) / 1000;
+    const factor = Math.pow(BASE_SETTINGS.spawnAcceleration, Math.floor(elapsed/8));
+    const moleFactor = Math.pow(BASE_SETTINGS.moleTimeAcceleration, Math.floor(elapsed/8));
+    const nextInterval = Math.max(220, state.spawnInterval * factor);
+    // also shrink mole visible time over time
+    state.currentMoleTime = Math.max(260, state.moleVisibleTime * moleFactor);
+    state.spawnTimer = setTimeout(spawnLoop, nextInterval);
+  })();
+}
+
+/* spawnMoles: choose empty holes and pop them up */
+function spawnMoles(){
+  if (!state.running) return;
+  const active = state.holes.filter(h=>h.up).length;
+  const maxNew = clamp(state.allowedSimul - active, 0, state.allowedSimul);
+  // decide count: occasionally spawn multiple
+  let toSpawn = 1;
+  if (state.mode === 'speed') {
+    toSpawn = rand(1, Math.min(3, state.allowedSimul));
+  } else {
+    toSpawn = (Math.random() < 0.12) ? 2 : 1;
+  }
+  toSpawn = Math.min(toSpawn, maxNew);
+  const emptyIndices = state.holes.map((h,i)=>h.up?null:i).filter(i=>i!==null);
+  shuffleArray(emptyIndices);
+  for (let i=0;i<toSpawn;i++){
+    const idx = emptyIndices[i];
+    if (typeof idx === 'undefined') break;
+    popUp(idx);
+  }
+}
+
+/* popUp a mole in hole index */
+function popUp(index){
+  const slot = state.holes[index];
+  if (!slot || slot.up) return;
+  const theme = THEMES[state.themeIndex];
+  const emoji = pick(theme.emoji);
+  slot.up = true;
+  slot.moleEl.innerText = emoji;
+  slot.moleEl.classList.add('up');
+  slot.moleEl.classList.remove('hit');
+  slot.moleEl.style.opacity = 1;
+  // allow pointer events on mole
+  slot.moleEl.style.pointerEvents = 'auto';
+  // set a timeout to hide if not hit
+  slot.timeout = setTimeout(()=> {
+    // if still up, it's a miss
+    if (slot.up) {
+      hideMole(index, false);
+      registerMiss();
+    }
+  }, state.currentMoleTime || state.moleVisibleTime);
+}
+
+/* hide mole */
+function hideMole(index, wasHit){
+  const slot = state.holes[index];
+  if (!slot) return;
+  slot.up = false;
+  slot.moleEl.classList.remove('up');
+  // clear timeout
+  if (slot.timeout) { clearTimeout(slot.timeout); slot.timeout = null; }
+  // small reset after hit to avoid re-clicks
+  setTimeout(()=> {
+    if (slot.moleEl) slot.moleEl.innerText = '';
+    slot.moleEl.classList.remove('hit');
+    slot.moleEl.style.pointerEvents = 'none';
+  }, 220);
+}
+
+/* register miss (not whacked) */
+function registerMiss(){
+  // only penalize in endless / speed? classic just counts time
+  if (state.mode === 'endless') {
+    state.lives--;
+    timerLivesEl.textContent = `❤ ${state.lives}`;
+    AudioEngine.beep(240,0.06,'sine',0.12);
+    state.combo = 1;
+    state.comboStreak = 0;
+    comboEl.textContent = `x${state.combo}`;
+    if (state.lives <= 0) endGame(false);
+  } else {
+    // small feedback
+    AudioEngine.beep(220,0.04,'sawtooth',0.04);
+    state.combo = 1;
+    state.comboStreak = 0;
+    comboEl.textContent = `x${state.combo}`;
+  }
+}
+
+/* ------------------------
+   Whack handling
+   ------------------------ */
+function onWhack(index){
+  if (!state.running) return;
+  const slot = state.holes[index];
+  if (!slot || !slot.up) {
+    // missed attempt: small feedback
+    AudioEngine.beep(150,0.04,'triangle',0.04);
+    // small penalty in speed? we choose not to penalize to keep fun
+    return;
+  }
+  // mark hit
+  slot.moleEl.classList.add('hit');
+  hideMole(index, true);
+  // scoring: base 1 point * combo
+  state.comboStreak++;
+  state.combo = 1 + Math.floor(state.comboStreak / 4); // every 4 consecutive hits increases multiplier
+  comboEl.textContent = `x${state.combo}`;
+  const gained = 1 * state.combo;
+  state.score += gained;
+  scoreEl.textContent = state.score;
+  // haptic
+  if (navigator.vibrate) navigator.vibrate(20);
+  // sound
+  AudioEngine.beep(1000 + Math.min(2600, 200*state.combo), 0.04, 'sine', 0.08);
+  // show particles near the hole
+  spawnParticles(slot.holeEl, '✨');
+  // speed-based extra: small chance to spawn extra mole
+  if (Math.random() < 0.12) spawnMoles();
+}
+
+/* ------------------------
+   End / Replay
+   ------------------------ */
+function endGame(isWin){
+  state.running = false;
+  if (state.spawnTimer) clearTimeout(state.spawnTimer);
+  if (state.clockTimer) clearInterval(state.clockTimer);
+  startBtn.textContent = 'Start';
+  startBtn.setAttribute('aria-pressed','false');
+
+  // overlay and endcard
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden','false');
+  endEmoji.innerText = pick(['🎉','🏆','👏','💥','🎊','🦖']);
+  endTitle.textContent = isWin ? 'Time Up!' : 'Game Over!';
+  endText.textContent = `Score: ${state.score} — Great job!`;
+  // confetti burst
+  confettiBurst();
+  // Save last
+  savePrefs();
+}
+
+/* replay button */
+replayBtn.addEventListener('click', ()=> {
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+  startGame();
+});
+endCloseBtn.addEventListener('click', ()=> {
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+});
+
+/* small confetti generator using emoji spans */
+function confettiBurst(){
+  const container = document.getElementById('confetti');
+  container.innerHTML = '';
+  const count = 22;
+  for (let i=0;i<count;i++){
+    const el = document.createElement('div');
+    el.style.position='absolute';
+    el.style.left = Math.random()*100 + '%';
+    el.style.top = '-10%';
+    el.style.fontSize = Math.floor(Math.random()*22+14) + 'px';
+    el.style.opacity = 0.95;
+    el.innerText = pick(['🎉','✨','🎊','🦖','⭐','💥']);
+    container.appendChild(el);
+    const dur = 1800 + Math.floor(Math.random()*1200);
+    el.animate([
+      { transform:`translateY(0) rotate(0deg)`, opacity:1 },
+      { transform:`translateY(${600 + Math.random()*300}px) rotate(${Math.random()*720-360}deg)`, opacity:0.1 }
+    ], { duration: dur, easing:'cubic-bezier(.2,.9,.2,1)'});
+    setTimeout(()=> el.remove(), dur+40);
+  }
+}
+
+/* ------------------------
+   Controls & UI wiring
+   ------------------------ */
+startBtn.addEventListener('click', ()=> {
+  if (state.running) {
+    // pause / resume not implemented, we'll treat as restart
+    endGame(false);
+  } else startGame();
+});
+
+restartBtn.addEventListener('click', ()=> {
+  // quick restart
+  if (state.spawnTimer) clearTimeout(state.spawnTimer);
+  if (state.clockTimer) clearInterval(state.clockTimer);
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+  startGame();
+});
+
+modeSelect.value = state.mode;
+difficultySelect.value = state.difficulty;
+currentModeEl.textContent = state.mode;
+difficultyBadge.textContent = 'Difficulty: ' + (state.difficulty.charAt(0).toUpperCase()+state.difficulty.slice(1));
+lastModeEl.textContent = state.mode;
+lastDiffEl.textContent = state.difficulty;
+
+/* sound toggle */
+soundToggle.addEventListener('click', ()=> {
+  state.audioOn = !state.audioOn;
+  soundToggle.textContent = state.audioOn ? '🔊' : '🔈';
+});
+
+/* contrast toggle */
+contrastToggle.addEventListener('click', ()=> {
+  document.body.classList.toggle('high-contrast');
+});
+
+/* difficulty/mode change immediate effect */
+modeSelect.addEventListener('change', (e)=> {
+  state.mode = e.target.value;
+  savePrefs();
+  currentModeEl.textContent = state.mode.charAt(0).toUpperCase()+state.mode.slice(1);
+});
+
+difficultySelect.addEventListener('change', (e)=> {
+  state.difficulty = e.target.value;
+  savePrefs();
+  difficultyBadge.textContent = 'Difficulty: ' + (state.difficulty.charAt(0).toUpperCase()+state.difficulty.slice(1));
+});
+
+/* ------------------------
+   Keyboard support
+   ------------------------ */
+/* Map number keys 1..n to hole indexes left-to-right top-to-bottom */
+window.addEventListener('keydown', (ev)=> {
+  if (!state.holes || state.holes.length === 0) return;
+  if (/^\d$/.test(ev.key)) {
+    const num = parseInt(ev.key,10);
+    if (num >= 1 && num <= state.totalHoles) {
+      onWhack(num-1);
+      // visual focus flash
+      const h = state.holes[num-1];
+      if (h && h.holeEl) {
+        h.holeEl.animate([{ transform:'scale(1.06)' }, { transform:'scale(1)' }], { duration: 120, easing:'ease' });
+      }
+    }
+  } else if (ev.key === ' '){ // space toggles start
+    ev.preventDefault();
+    if (!state.running) startGame(); else endGame(false);
+  }
+});
+
+/* ------------------------
+   Utility: shuffle array
+   ------------------------ */
+function shuffleArray(arr){
+  for (let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+}
+
+/* ------------------------
+   Resize handling (rebuild grid)
+   ------------------------ */
+let resizeTimeout = null;
+window.addEventListener('resize', ()=> {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(()=> {
+    const prev = state.totalHoles;
+    const prevCols = state.cols;
+    buildGrid();
+    // if prev holes > new holes, cutoff combos etc but keep state
+  }, 220);
+});
+
+/* ------------------------
+   Initial setup
+   ------------------------ */
+(function init(){
+  // set saved theme or random
+  setRandomTheme(state.themeIndex);
+  // build grid initially
+  buildGrid();
+  // set badges UI
+  scoreEl.textContent = state.score;
+  comboEl.textContent = `x${state.combo}`;
+  timerLivesEl.textContent = `${BASE_SETTINGS.classicTime}s`;
+  // keyboard hint: add numeric labels inside holes for accessibility
+  // add small index labels (visually hidden to avoid clutter) — but we will add as aria-labels and number keys mapping
+  // ensure localStorage values show
+  lastModeEl.textContent = state.mode;
+  lastDiffEl.textContent = state.difficulty;
+
+  // friendly initial micro-animation on logo
+  logo.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-6px)' }, { transform: 'translateY(0)' }], { duration: 900, iterations:1 });
+})();
+
+/* End of file */
+</script>
+</body>
+</html>
