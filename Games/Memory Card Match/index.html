@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Memory Match — MrDino.Info</title>
+<meta name="description" content="A clean, modern, and addictive HTML5 Memory Card Match with emoji randomizer, smooth animations, and mobile-friendly UI." />
+<style>
+  :root{
+    --bg: #0f1220;
+    --panel: #151936;
+    --accent: #6cf0a8;
+    --accent-2: #7aa6ff;
+    --card-front: #1c2247;
+    --card-back: #232a5c;
+    --text: #e9ecff;
+    --muted: #9aa3c7;
+    --good: #3be477;
+    --warn: #ffc861;
+    --danger: #ff6f91;
+    --radius-xl: 18px;
+    --shadow-1: 0 10px 30px rgba(0,0,0,.35);
+    --shadow-2: 0 6px 18px rgba(0,0,0,.35);
+    --pop-ms: 220ms;
+    --grid-min: clamp(64px, 10vmin, 100px);
+    --grid-gap: clamp(8px, 1.2vmin, 16px);
+  }
+
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: 'ui-rounded', 'system-ui', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #223767 0%, rgba(34,55,103,0) 60%) no-repeat,
+      radial-gradient(900px 500px at 110% 10%, #3a2d78 0%, rgba(58,45,120,0) 65%) no-repeat,
+      var(--bg);
+    color: var(--text);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: clamp(10px, 2.2vmin, 28px);
+  }
+
+  /* App shell */
+  .wrap{
+    width: min(1200px, 100%);
+    display:grid;
+    grid-template-rows: auto 1fr auto;
+    gap: clamp(10px, 1.8vmin, 20px);
+  }
+
+  /* Header / HUD */
+  .hud{
+    display:grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items:center;
+    gap: 12px;
+    text-align: center;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    justify-content: center;
+    gap:10px;
+    user-select:none;
+  }
+  .brand a{
+    color: var(--text);
+    text-decoration:none;
+    font-weight:700;
+    letter-spacing:.2px;
+    opacity:.95;
+  }
+
+  .stats{
+    display:flex;
+    justify-content:center;
+    gap: clamp(10px, 2vmin, 28px);
+    flex-wrap:wrap;
+  }
+  .pill{
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.15));
+    border: 1px solid rgba(255,255,255,.08);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 999px;
+    box-shadow: var(--shadow-2);
+    display:flex;
+    align-items:center;
+    justify-content: center;
+    gap:10px;
+    min-width: max-content;
+  }
+  .pill .label{ color: var(--muted); font-size:.9rem}
+  .pill .value{ font-variant-numeric: tabular-nums; font-weight:800; letter-spacing:.3px}
+
+  .actions{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  button{
+    -webkit-tap-highlight-color: transparent;
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-weight:800;
+    background: linear-gradient(180deg, var(--accent-2), #5d85ff);
+    color:#0b0f1d;
+    box-shadow: var(--shadow-2);
+    transform: translateZ(0);
+    transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+    text-align: center;
+  }
+  button:hover{ transform: translateY(-1px) scale(1.02) }
+  button:active{ transform: translateY(0) scale(.98) }
+  .ghost{
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.2));
+    color: var(--text);
+    border:1px solid rgba(255,255,255,.08);
+  }
+
+  /* Volume control */
+  .volume-control{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-top: 10px;
+  }
+  .volume-control label{
+    color: var(--muted);
+    font-size:.9rem;
+    font-weight:600;
+  }
+  .volume-control input[type="range"]{
+    width: 100px;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(0,0,0,.2));
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+  }
+  .volume-control input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: var(--shadow-2);
+  }
+  .volume-control input[type="range"]::-moz-range-thumb{
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: var(--shadow-2);
+    border: none;
+  }
+
+  /* Grid */
+  .grid{
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.08);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-1);
+    padding: clamp(10px, 1.8vmin, 18px);
+    display:grid;
+    grid-template-columns: repeat(4, minmax(var(--grid-min), 1fr));
+    grid-template-rows: repeat(4, minmax(var(--grid-min), 1fr));
+    gap: var(--grid-gap);
+    align-content:start;
+    max-width: calc(4 * var(--grid-min) + 5 * var(--grid-gap));
+    max-height: calc(4 * var(--grid-min) + 5 * var(--grid-gap));
+    margin: 0 auto;
+  }
+
+  /* Card */
+  .card{
+    perspective: 1000px;
+    position:relative;
+    width:100%;
+    aspect-ratio: 1/1;
+  }
+  .inner{
+    position:absolute;
+    inset:0;
+    transform-style:preserve-3d;
+    border-radius: 14px; /* Removed transition for instant flip */
+  }
+  .card:not(.matched):hover .inner{ transform: translateY(-3px) }
+  .card.flipped .inner{ transform: rotateY(180deg) }
+
+  .face{
+    position:absolute;
+    inset:0;
+    display:grid;
+    place-items:center;
+    backface-visibility:hidden;
+    border-radius: 14px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.08);
+  }
+  .front{
+    background: radial-gradient(140% 140% at 20% 10%, rgba(255,255,255,.08) 0%, rgba(255,255,255,.03) 60%), var(--card-front);
+    transform: rotateY(180deg);
+    font-size: clamp(24px, 6vmin, 48px);
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,.35));
+    user-select:none;
+  }
+  .back{
+    background:
+      conic-gradient(from 180deg at 50% 50%, rgba(255,255,255,.06), rgba(255,255,255,0)),
+      repeating-conic-gradient(from 0deg at 50% 50%, rgba(122,166,255,.15) 0 8deg, transparent 8deg 16deg),
+      var(--card-back);
+    display:grid;
+    place-items:center;
+  }
+  .back .spark{
+    width: 44%;
+    height:44%;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(122,166,255,.35), rgba(108,240,168,.35));
+    filter: blur(10px) saturate(1.2) brightness(1.2);
+    transform: rotate(8deg) scale(1);
+    transition: transform var(--pop-ms) ease;
+  }
+  .card:active .back .spark{ transform: rotate(8deg) scale(1.05) }
+  .card.matched .inner{
+    animation: pop .45s ease;
+  }
+  @keyframes pop{
+    0%{ transform: rotateY(180deg) scale(1) }
+    60%{ transform: rotateY(180deg) scale(1.08) }
+    100%{ transform: rotateY(180deg) scale(1) }
+  }
+
+  /* Win overlay */
+  .win{
+    position:fixed;
+    inset:0;
+    display:none;
+    place-items:center;
+    background: radial-gradient(1200px 600px at 50% -5%, rgba(122,166,255,.25), rgba(0,0,0,.6) 60%), rgba(6,8,18,.6);
+    backdrop-filter: blur(6px);
+    z-index: 50;
+  }
+  .win.show{ display:grid; animation: fadeIn .2s ease }
+  @keyframes fadeIn{ from{opacity:0} to{opacity:1} }
+
+  .win-card{
+    background: linear-gradient(180deg, #1a1f43, #13193a);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius: 22px;
+    box-shadow: var(--shadow-1);
+    padding: clamp(16px, 3.2vmin, 28px);
+    width:min(680px, 92%);
+    text-align:center;
+    position: relative;
+    overflow:hidden;
+  }
+  .win-title{
+    font-size: clamp(24px, 4.5vmin, 40px);
+    font-weight: 900;
+    letter-spacing:.3px;
+    margin: 4px 0 10px;
+    background: linear-gradient(180deg, #fff, #cfe0ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .win-sub{
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .win-stats{
+    display:flex;
+    gap:12px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin: 14px 0 18px;
+  }
+  .confetti{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .confetti i{
+    position:absolute;
+    top:-20px;
+    width:10px;
+    height:16px;
+    border-radius:2px;
+    background: white;
+    opacity:.9;
+    animation: drop linear forwards;
+  }
+  @keyframes drop{
+    to{ transform: translateY(120vh) rotate(360deg) }
+  }
+
+  /* Watermark / branding */
+  .watermark{
+    position:fixed;
+    right:10px;
+    bottom:10px;
+    opacity:.75;
+    font-size:.85rem;
+    background: rgba(0,0,0,.25);
+    border:1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(4px);
+    padding:6px 10px;
+    border-radius: 10px;
+    z-index:40;
+    text-align: center;
+  }
+  .watermark a{ color: var(--text); text-decoration:none; font-weight:700 }
+  .watermark .dot{ color: var(--accent) }
+
+  /* Small helpers */
+  .sr-only{
+    position:absolute;
+    width:1px;
+    height:1px;
+    padding:0;
+    margin:-1px;
+    overflow:hidden;
+    clip:rect(0,0,0,0);
+    white-space:nowrap;
+    border:0;
+  }
+
+  @media (max-width: 540px){
+    .hud{ grid-template-columns: 1fr; gap: 8px }
+    .actions{ justify-content:center }
+    .brand{ order:-1 }
+    .front{ font-size: clamp(20px, 5vmin, 36px); }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="Memory Card Match">
+    <!-- HUD -->
+    <header class="hud">
+      <div class="brand" aria-hidden="true">
+        <a href="https://MrDino.Info" target="_blank" rel="noopener">MrDino.Info • Memory Match</a>
+      </div>
+
+      <div class="stats" aria-live="polite" aria-atomic="true">
+        <div class="pill"><span class="label">Time</span><span class="value" id="time">00:00</span></div>
+        <div class="pill"><span class="label">Moves</span><span class="value" id="moves">0</span></div>
+        <div class="pill"><span class="label">Pairs</span><span class="value" id="pairs">0/8</span></div>
+      </div>
+
+      <div class="actions">
+        <button class="ghost" id="newSetBtn" title="New Emoji Set">New Set ♻️</button>
+        <button id="restartBtn" title="Restart game">Restart 🔄</button>
+      </div>
+
+      <div class="volume-control">
+        <label for="volume">Volume:</label>
+        <input type="range" id="volume" min="0" max="100" value="50">
+      </div>
+    </header>
+
+    <!-- Grid -->
+    <main class="grid" id="grid" aria-label="Card grid"></main>
+
+    <!-- Footer (space for future) -->
+    <footer aria-hidden="true"></footer>
+  </div>
+
+  <!-- Win Overlay -->
+  <div class="win" id="win">
+    <div class="win-card" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+      <div class="confetti" id="confetti"></div>
+      <div class="brand" style="justify-content:center; margin-bottom:8px">
+        <strong><a href="https://MrDino.Info" target="_blank" rel="noopener" style="color:#e9ecff;text-decoration:none">MrDino.Info</a></strong>
+      </div>
+      <h2 class="win-title" id="winTitle">You Win! 🎉</h2>
+      <p class="win-sub">Fresh emojis, smooth flips, and a clean win. Nice memory! 🧠</p>
+      <div class="win-stats">
+        <div class="pill"><span class="label">Time</span><span class="value" id="wTime">00:00</span></div>
+        <div class="pill"><span class="label">Moves</span><span class="value" id="wMoves">0</span></div>
+        <div class="pill"><span class="label">Pairs</span><span class="value" id="wPairs">0/8</span></div>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
+        <button id="playAgain">Play Again ▶️</button>
+        <button class="ghost" id="freshSet">New Emoji Set ♻️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Branding watermark -->
+  <div class="watermark"><a href="https://MrDino.Info" target="_blank" rel="noopener"><strong>MrDino</strong><span class="dot">.</span>Info</a></div>
+
+  <audio id="bgMusic" loop src="https://mrdino.info/Music/game-music-loop-4-144341.mp3"></audio>
+
+<script>
+/* =========================================================
+   Memory Match — MrDino.Info
+   Pure HTML/CSS/JS. Responsive. Emoji-randomized. Smooth.
+   ========================================================= */
+
+(() => {
+  /*** Configuration ***/
+  const EMOJIS = [
+    "😀","😁","😂","🤣","😃","😄","😅","😆","😉","😊","🙂","🙃","😋","😎","😍","😘","🥰","😜","🤩","🫠",
+    "🤖","👻","💩","😺","😸","😹","😻","🙈","🙉","🙊","🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯",
+    "🦁","🐮","🐷","🐵","🐸","🐔","🐧","🐦","🐤","🦆","🦅","🦉","🦄","🐝","🪲","🦋","🐢","🐙","🐠","🐳",
+    "🌸","🌼","🌻","🌺","🍀","🍁","🍂","🍃","🌈","⭐","🌟","⚡","🔥","❄️","💧","💎","🪐","🌙","☀️",
+    "🍎","🍊","🍋","🍉","🍇","🍓","🍒","🍑","🥝","🥑","🌶️","🍔","🍟","🍕","🌭","🍣","🍩","🍪","🍰","🧋",
+    "☕","🍵","🧃","🥤","🍺","🍻","🍷","🍸","🎂","🧁","🥨","🥞","🥐","🥥","🥕","🌮","🌯","🍜","🍝","🍱",
+    "⚽","🏀","🏈","🎾","🏓","🥊","🎲","🎮","🕹️","♟️","🎯","🎹","🎸","🎺","🎻","🥁","🎧","📷","🎥","🎬",
+    "📱","💻","⌚","🖱️","⌨️","📀","💡","📦","🔑","🧸","🧩","🪁","✉️","📌","📎","📚","🖊️","🖍️","📏"
+  ]; // ≥ 120
+
+  const deckSize = 16; // 8 pairs
+  const totalPairs = deckSize / 2;
+
+  /*** State ***/
+  const grid = document.getElementById('grid');
+  const timeEl = document.getElementById('time');
+  const movesEl = document.getElementById('moves');
+  const pairsEl = document.getElementById('pairs');
+
+  const win = document.getElementById('win');
+  const confettiLayer = document.getElementById('confetti');
+  const wTime = document.getElementById('wTime');
+  const wMoves = document.getElementById('wMoves');
+  const wPairs = document.getElementById('wPairs');
+
+  const restartBtn = document.getElementById('restartBtn');
+  const newSetBtn = document.getElementById('newSetBtn');
+  const playAgainBtn = document.getElementById('playAgain');
+  const freshSetBtn = document.getElementById('freshSet');
+  const bgMusic = document.getElementById('bgMusic');
+  const volumeControl = document.getElementById('volume');
+
+  let deck = []; // [{id, emoji, matched, el}]
+  let first = null, second = null, lock = false;
+  let moves = 0, matches = 0;
+  let timerId = null, startAt = null;
+
+  /*** Audio Control ***/
+  bgMusic.volume = volumeControl.value / 100;
+  volumeControl.addEventListener('input', () => {
+    bgMusic.volume = volumeControl.value / 100;
+  });
+
+  function startMusic(){
+    bgMusic.play().catch(e => console.log('Audio play failed:', e));
+  }
+
+  /*** Utilities ***/
+  const shuffle = arr => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
+  function pickRandomEmojis(nPairs){
+    const pool = [...EMOJIS];
+    shuffle(pool);
+    return pool.slice(0, nPairs);
+  }
+
+  function fmtTime(ms){
+    const s = Math.floor(ms/1000);
+    const mm = String(Math.floor(s/60)).padStart(2,'0');
+    const ss = String(s%60).padStart(2,'0');
+    return `${mm}:${ss}`;
+  }
+
+  function startTimer(){
+    if (timerId) return;
+    startAt = performance.now();
+    timerId = requestAnimationFrame(tick);
+  }
+
+  function stopTimer(){
+    if (timerId){
+      cancelAnimationFrame(timerId);
+      timerId = null;
+    }
+  }
+
+  function tick(now){
+    const elapsed = now - startAt;
+    timeEl.textContent = fmtTime(elapsed);
+    timerId = requestAnimationFrame(tick);
+  }
+
+  function resetHUD(){
+    moves = 0; matches = 0;
+    movesEl.textContent = '0';
+    pairsEl.textContent = `0/${totalPairs}`;
+    timeEl.textContent = '00:00';
+    stopTimer();
+    startAt = null;
+  }
+
+  /*** Build a fresh game ***/
+  function buildGame({freshSet=false} = {}){
+    grid.innerHTML = '';
+    first = second = null;
+    lock = false;
+    resetHUD();
+
+    const picks = pickRandomEmojis(totalPairs);
+    const doubled = shuffle([...picks, ...picks].map((emoji, i) => ({
+      id: i + '_' + cryptoRandomId(),
+      emoji,
+      matched: false
+    })));
+    deck = doubled;
+
+    deck.forEach(card => {
+      const cardEl = createCardEl(card);
+      card.el = cardEl;
+      grid.appendChild(cardEl);
+    });
+
+    pairsEl.textContent = `0/${totalPairs}`;
+  }
+
+  function cryptoRandomId(){
+    const a = new Uint32Array(2);
+    (crypto || window.msCrypto).getRandomValues(a);
+    return (a[0].toString(36)+a[1].toString(36)).slice(0,10);
+  }
+
+  function createCardEl(card){
+    const btn = document.createElement('button');
+    btn.className = 'card';
+    btn.setAttribute('type','button');
+    btn.setAttribute('aria-label','Hidden card');
+    btn.setAttribute('data-id', card.id);
+    btn.innerHTML = `
+      <div class="inner">
+        <div class="face front" aria-hidden="true">${card.emoji}</div>
+        <div class="face back" aria-hidden="true"><div class="spark"></div></div>
+      </div>
+    `;
+    btn.addEventListener('click', () => onFlip(card));
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      onFlip(card);
+    }, {passive: false});
+    return btn;
+  }
+
+  /*** Game logic ***/
+  function onFlip(card){
+    if (lock || card.matched) return;
+
+    if (!startAt){
+      startTimer();
+      startMusic();
+    }
+
+    const el = card.el;
+    if (el.classList.contains('flipped')) return;
+
+    el.classList.add('flipped');
+
+    if (!first){
+      first = card;
+      return;
+    }
+    if (first && !second){
+      second = card;
+      moves++;
+      movesEl.textContent = String(moves);
+      checkMatch();
+    }
+  }
+
+  function checkMatch(){
+    if (!first || !second) return;
+    const isMatch = first.emoji === second.emoji;
+    if (isMatch){
+      first.matched = true;
+      second.matched = true;
+      first.el.classList.add('matched');
+      second.el.classList.add('matched');
+
+      matches++;
+      pairsEl.textContent = `${matches}/${totalPairs}`;
+
+      first = second = null;
+
+      if (matches === totalPairs){
+        stopTimer();
+        setTimeout(showWin, 300);
+      }
+    } else {
+      lock = true;
+      setTimeout(() => {
+        first.el.classList.remove('flipped');
+        second.el.classList.remove('flipped');
+        first = second = null;
+        lock = false;
+      }, 1500);
+    }
+  }
+
+  /*** Win UI ***/
+  function showWin(){
+    const elapsed = startAt ? (performance.now() - startAt) : 0;
+    wTime.textContent = fmtTime(elapsed);
+    wMoves.textContent = String(moves);
+    wPairs.textContent = `${matches}/${totalPairs}`;
+
+    confettiLayer.innerHTML = '';
+    const pieces = window.innerWidth < 540 ? 50 : 90;
+    for (let i=0;i<pieces;i++){
+      const f = document.createElement('i');
+      const left = Math.random()*100;
+      const delay = Math.random()*0.25;
+      const dur = 2.2 + Math.random()*1.6;
+      const hue = Math.floor(180 + Math.random()*160);
+      f.style.left = left + 'vw';
+      f.style.animationDuration = dur + 's';
+      f.style.animationDelay = delay + 's';
+      f.style.transform = `translateY(-20px) rotate(${Math.random()*180}deg)`;
+      f.style.background = `hsl(${hue}deg 90% 60%)`;
+      confettiLayer.appendChild(f);
+    }
+
+    win.classList.add('show');
+  }
+
+  function hideWin(){
+    win.classList.remove('show');
+  }
+
+  /*** Controls ***/
+  restartBtn.addEventListener('click', () => {
+    hideWin();
+    buildGame();
+  });
+
+  newSetBtn.addEventListener('click', () => {
+    hideWin();
+    buildGame({freshSet:true});
+  });
+
+  playAgainBtn.addEventListener('click', () => {
+    hideWin();
+    buildGame();
+  });
+
+  freshSetBtn.addEventListener('click', () => {
+    hideWin();
+    buildGame({freshSet:true});
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && win.classList.contains('show')) hideWin();
+  });
+
+  buildGame({freshSet:true});
+})();
+</script>
+</body>
+</html>

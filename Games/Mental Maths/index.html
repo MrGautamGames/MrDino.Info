@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Math Dino Dash — First to 10 Correct</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{ --accent:#22c55e; --danger:#ef4444; --ink:#0f172a; }
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(900px 520px at -10% 0%, rgba(34,197,94,.20), transparent 60%),
+      radial-gradient(900px 520px at 110% 120%, rgba(14,165,233,.18), transparent 60%),
+      linear-gradient(135deg, #dcfce7, #a7f3d0);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  .animate-fadeIn{ animation: fadeIn .35s ease }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)} }
+  .progress{ height: 10px; border-radius: 9999px; background: #e2e8f0; overflow: hidden; position: relative; }
+  .progress > i{ position:absolute; inset:0 0 0 0; width:0%; background: linear-gradient(90deg, #f59e0b, #fb7185, #22c55e); transition: width .25s ease; }
+  .track{ position: relative; height: 100px; border-radius: 14px; overflow: hidden; background:
+    linear-gradient(180deg, rgba(15,23,42,.04), rgba(15,23,42,.06)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 10px, rgba(255,255,255,0) 10px 24px),
+    linear-gradient(180deg, rgba(14,165,233,.12), rgba(34,197,94,.12));
+    border:1px solid rgba(15,23,42,.08); }
+  .ground{ position:absolute; left:0; right:0; bottom:0; height: 20px; background: repeating-linear-gradient(90deg, rgba(15,23,42,.2) 0 24px, rgba(15,23,42,.12) 24px 48px); }
+  .dino-wrap{ position:absolute; left:0; bottom:18px; width:72px; height:72px; pointer-events:none; }
+  .dino-svg{ width:72px; height:54px; transform-origin:center bottom; will-change: transform; }
+  .dino-shadow{ position:absolute; left:12px; bottom:10px; width:40px; height:10px; border-radius:999px; background:rgba(0,0,0,.08); filter: blur(3px); transform-origin:center; will-change: transform, opacity; }
+  .finish-flag{ position:absolute; right:8px; top:6px; height:88px; display:flex; align-items:center; pointer-events:none; font-size:18px; font-weight:900; color:var(--ink); }
+  .opt{ border-radius: 14px; padding: 14px; font-weight: 800; font-size: 18px; background: linear-gradient(180deg, #16a34a, #10954a); color: white; box-shadow: 0 10px 24px rgba(16,185,129,.25); transition: transform .06s ease, filter .2s ease; touch-action: manipulation; }
+  .opt.wrong{ background: linear-gradient(180deg, #ef4444, #dc2626) }
+  .opt.correct{ background: linear-gradient(180deg, #22c55e, #16a34a) }
+  .badge{ padding: 6px 10px; border-radius: 12px; font-weight:900; letter-spacing:.3px; background:#f1f5f9; color:#0f172a; border:1px solid rgba(15,23,42,.06) }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important } }
+</style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div id="app" class="w-full max-w-md">
+    <div id="card" class="bg-white/95 rounded-2xl shadow-2xl p-5 animate-fadeIn relative overflow-hidden">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="inline-grid place-items-center w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-emerald-400 text-white text-xl shadow">🦖</span>
+          <div class="font-extrabold text-slate-800 leading-tight">MrDino.Info<div class="text-xs text-slate-500 font-bold tracking-wide">Math Dino Dash</div></div>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="badge"><input id="sfxToggle" type="checkbox" checked /> SFX</label>
+          <label class="badge"><input id="musicToggle" type="checkbox" /> Music</label>
+        </div>
+      </div>
+
+      <section id="screen-welcome">
+        <div class="text-slate-600 mb-3">Answer correctly 10 times to win. Each correct answer = +1 step, wrong = -1 step. No skips.</div>
+        <label class="block text-sm font-bold text-slate-600 mb-1">Difficulty</label>
+        <select id="difficulty" class="w-full p-3 mb-4 border rounded-xl bg-slate-50 text-slate-800">
+          <option value="easy">Easy (30s)</option><option value="medium">Medium (20s)</option><option value="hard">Hard (15s)</option>
+        </select>
+
+        <div class="flex items-center justify-between mb-4">
+          <div id="highScore" class="text-slate-600">High Score: 0</div>
+          <div class="text-slate-600">Coins <span id="coinsWelcome" class="font-extrabold">0</span></div>
+        </div>
+        <button id="startBtn" class="w-full bg-emerald-500 text-white py-3 rounded-xl font-extrabold text-lg shadow-lg">Start — First to 10</button>
+      </section>
+
+      <section id="screen-quiz" class="hidden relative">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="badge">✅ Correct <span id="correctCount" class="ml-1">0</span>/10</span>
+            <span class="badge">🔥 Streak <span id="streak" class="ml-1">0</span></span>
+          </div>
+          <div class="flex items-center gap-2"><span class="badge">🕒 <span id="timer">30</span>s</span><span class="badge">🪙 <span id="score">0</span></span></div>
+        </div>
+
+        <div class="progress mb-3"><i id="bar"></i></div>
+        <div id="question" class="text-3xl font-black text-slate-800 text-center py-3 rounded-xl bg-slate-50 border mb-3" aria-live="polite"></div>
+        <div id="options" class="grid grid-cols-2 gap-3 mb-3"></div>
+
+        <div class="mt-4 track" id="track">
+          <div class="ground"></div>
+          <div class="finish-flag">🏁</div>
+
+          <div class="dino-wrap" id="dinoWrap" style="transform:translateX(16px) translateY(0px) scale(1)">
+            <svg class="dino-svg" viewBox="0 0 64 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="8" y="14" width="26" height="16" rx="4" fill="#16a34a"/>
+              <circle cx="28" cy="20" r="2" fill="#0f172a"/>
+              <rect x="18" y="28" width="18" height="8" rx="4" fill="#22c55e"/>
+              <rect x="10" y="30" width="8" height="6" rx="2" fill="#22c55e"/>
+              <rect x="28" y="34" width="8" height="6" rx="2" fill="#22c55e"/>
+              <path d="M34 16 l8 -4 v8 z" fill="#16a34a"/>
+            </svg>
+            <div class="dino-shadow" id="dinoShadow" style="opacity:0.9; transform:scale(1)"></div>
+          </div>
+        </div>
+
+        <div id="subnote" class="text-center text-sm text-slate-500 mt-2">Tap an answer • No skips • Keep answering until you hit 10 correct</div>
+      </section>
+
+      <section id="screen-end" class="hidden">
+        <div class="text-2xl font-extrabold text-slate-800 mb-1" id="finalScore">Final Coins: 0</div>
+        <div id="highScoreMsg" class="text-emerald-600 font-bold mb-5"></div>
+        <div class="flex items-center justify-between mb-4">
+          <div class="badge">Best: <span id="bestOut" class="ml-1">0</span></div>
+          <div class="badge">Earned 🪙 <span id="earnedOut" class="ml-1">0</span></div>
+        </div>
+        <button id="restartBtn" class="w-full bg-sky-500 text-white py-3 rounded-xl font-extrabold text-lg shadow-lg">Return to Menu</button>
+      </section>
+    </div>
+  </div>
+
+  <!-- audio -->
+  <audio id="bgm" loop preload="auto"><source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_3ed58f493a.mp3?filename=casual-game-music-10538.mp3" type="audio/mpeg"></audio>
+  <audio id="sfxCorrect" preload="auto"><source src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_77b7f6cfb9.mp3?filename=correct-2-46134.mp3" type="audio/mpeg"></audio>
+  <audio id="sfxWrong" preload="auto"><source src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_a2e51ed245.mp3?filename=error-2-46134.mp3" type="audio/mpeg"></audio>
+
+<script>
+/* Helpers */
+const $ = (s,el=document)=> el.querySelector(s);
+const $$ = (s,el=document)=> [...el.querySelectorAll(s)];
+const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
+const lerp = (a,b,t)=> a + (b-a)*t;
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const rand = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
+
+/* UI refs */
+const refs = {
+  screens: { welcome: $('#screen-welcome'), quiz: $('#screen-quiz'), end: $('#screen-end') },
+  startBtn: $('#startBtn'), restartBtn: $('#restartBtn'),
+  difficulty: $('#difficulty'), sfxToggle: $('#sfxToggle'), musicToggle: $('#musicToggle'),
+  question: $('#question'), options: $('#options'), bar: $('#bar'),
+  timer: $('#timer'), score: $('#score'), streak: $('#streak'), highScore: $('#highScore'), coinsWelcome: $('#coinsWelcome'),
+  correctCount: $('#correctCount'), track: $('#track'),
+  dinoWrap: $('#dinoWrap'), dinoShadow: $('#dinoShadow'),
+  finalScore: $('#finalScore'), highScoreMsg: $('#highScoreMsg'), bestOut: $('#bestOut'), earnedOut: $('#earnedOut')
+};
+
+/* Audio */
+const A = { bgm: $('#bgm'), ok: $('#sfxCorrect'), err: $('#sfxWrong') };
+let sfxOn = true, musicOn = false, audioCtx=null, unlocked=false;
+function ensureAudio(){ if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+function unlockAudio(){ if(unlocked) return; ensureAudio(); const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); g.gain.value=0.00001; o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+0.01); unlocked=true; if(musicOn) play(A.bgm, .5); }
+async function play(el, vol=1){ if(!el) return; try{ el.pause(); el.currentTime=0; el.volume = vol; await el.play(); }catch(e){} }
+
+/* State */
+const state = {
+  stepsTotal: 10,      // need 10 correct answers to win
+  qIndex:0,
+  answered:0,
+  score:0,
+  streak:0,
+  timeLeft:30,
+  timerId:null,
+  locked:false,
+  highScore: parseInt(localStorage.getItem('dinoHighScore')||'0',10),
+  bank: parseInt(localStorage.getItem('dinoBank')||'0',10),
+  difficulty: 'easy',
+  currentStep: 0, // 0..stepsTotal
+  correctCount: 0, // counts correct answers (0..10)
+  minX: 16,
+  running: false
+};
+
+/* Live */
+const live = {
+  dinoX:16, dinoXTarget:16, dinoY:0, dinoYTarget:0, dinoScale:1,
+  stepPositions: [], finishX:0, lastTime:0, winPending:false
+};
+
+/* Build discrete step positions */
+function buildStepPositions(){
+  const rect = refs.track.getBoundingClientRect();
+  const trackWidth = rect.width;
+  const finishX = Math.max(trackWidth - 96, state.minX + 120);
+  live.finishX = finishX;
+  const span = finishX - state.minX;
+  live.stepPositions = Array.from({length: state.stepsTotal + 1}, (_, i) => state.minX + (span * (i / state.stepsTotal)));
+  // keep currentStep in bounds
+  state.currentStep = clamp(state.currentStep, 0, state.stepsTotal);
+  live.dinoXTarget = live.stepPositions[state.currentStep];
+  live.dinoX = live.dinoX ?? live.dinoXTarget;
+}
+
+/* Screens */
+function show(name){ Object.values(refs.screens).forEach(s=> s.classList.add('hidden')); refs.screens[name].classList.remove('hidden'); }
+function startGame(){
+  if(state.running) return;
+  unlockAudio();
+  state.running = true;
+  state.difficulty = refs.difficulty.value;
+  state.qIndex = 0; state.answered = 0; state.score = 0; state.streak = 0; state.timeLeft = getTimeFor(state.difficulty);
+  state.currentStep = 0; state.correctCount = 0; state.locked = false; live.winPending = false;
+  buildStepPositions();
+  live.dinoX = live.dinoXTarget = live.stepPositions[0];
+  show('quiz'); updateHUD(); nextQuestion();
+  if(musicOn) play(A.bgm, .5);
+}
+function endGame(won=false){
+  if(!state.running) return;
+  state.running = false;
+  clearTimer();
+  show('end');
+  refs.finalScore.textContent = won ? `You Won! Coins: ${state.score}` : `Final Coins: ${state.score}`;
+  const best = Math.max(state.highScore, state.score);
+  if(state.score > state.highScore){ refs.highScoreMsg.textContent = 'New High Score!'; state.highScore = state.score; localStorage.setItem('dinoHighScore', state.highScore); } else refs.highScoreMsg.textContent = `High Score: ${state.highScore}`;
+  state.bank += state.score; localStorage.setItem('dinoBank', state.bank);
+  refs.bestOut.textContent = best; refs.earnedOut.textContent = state.score;
+  try{ A.bgm.pause(); }catch(e){}
+}
+function restart(){
+  state.running = false; clearTimer(); show('welcome');
+  refs.highScore.textContent = `High Score: ${state.highScore}`; refs.coinsWelcome.textContent = state.bank;
+}
+function getTimeFor(diff){ return diff==='easy'?30:diff==='medium'?20:15; }
+function updateHUD(){
+  refs.streak.textContent = state.streak;
+  refs.score.textContent = state.score;
+  refs.timer.textContent = state.timeLeft;
+  refs.correctCount.textContent = `${state.correctCount}`;
+  const pct = Math.round((state.currentStep / state.stepsTotal) * 100);
+  refs.bar.style.width = `${clamp(pct,0,100)}%`;
+}
+
+/* Timer & question flow */
+function clearTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
+function startTimer(){ clearTimer(); state.timeLeft = getTimeFor(state.difficulty); refs.timer.classList.remove('text-red-600'); refs.timer.textContent = state.timeLeft; state.timerId = setInterval(()=>{ state.timeLeft--; refs.timer.textContent = state.timeLeft; if(state.timeLeft<=5) refs.timer.classList.add('text-red-600'); if(state.timeLeft<=0){ clearTimer(); handleWrong(true); } },1000); }
+
+function nextQuestion(){
+  if(!state.running) return;
+  // If winPending, wait for animation to end
+  if(state.correctCount >= state.stepsTotal){
+    live.winPending = true;
+    return;
+  }
+  // generate next question (no fixed cap)
+  state.locked = false;
+  const {num1,num2,op,correct,options} = makeQuestion(state.difficulty);
+  refs.question.textContent = `${num1} ${op} ${num2} = ?`;
+  refs.options.innerHTML = '';
+  options.forEach(val=>{
+    const btn = document.createElement('button'); btn.className='opt'; btn.textContent = val;
+    btn.onclick = ()=> choose(btn, val, correct);
+    refs.options.appendChild(btn);
+  });
+  startTimer();
+  state.qIndex++;
+  updateHUD();
+}
+
+/* Question generator */
+function makeQuestion(diff){
+  let n1,n2,op,correct;
+  if(diff==='easy'){ n1=rand(1,10); n2=rand(1,10); }
+  else if(diff==='medium'){ n1=rand(10,50); n2=rand(10,50); }
+  else { n1=rand(20,100); n2=rand(20,100); }
+  const ops=['+','-','*','/']; op=ops[rand(0,ops.length-1)];
+  if(op==='+') correct=n1+n2; else if(op==='-') correct=n1-n2; else if(op==='*') correct=n1*n2; else { n2 = rand(2, diff==='hard'?15:10); n1 = n2 * rand(1, diff==='hard'?20:12); correct = n1 / n2; }
+  const opts = new Set([correct]); while(opts.size<4){ const wig = diff==='easy'? rand(-6,6): diff==='medium'? rand(-12,12): rand(-20,20); const cand = correct + wig; if(cand!==correct) opts.add(cand); }
+  return {num1:n1,num2:n2,op,correct,options:[...opts].sort(()=>Math.random()-0.5)};
+}
+
+/* Answer handling */
+function choose(btn,val,correct){
+  if(!state.running) return;
+  if(state.locked) return;
+  state.locked = true; clearTimer();
+  [...refs.options.querySelectorAll('button')].forEach(b=> b.disabled=true);
+  if(Number(val) === Number(correct)){
+    btn.classList.add('correct'); if(sfxOn) play(A.ok, .9);
+    state.streak++;
+    const bonus = state.streak>=3?Math.floor(state.streak/3):0; const add = 10 + bonus; state.score += add;
+    // advance one discrete step
+    state.currentStep = Math.min(state.stepsTotal, state.currentStep + 1);
+    live.dinoXTarget = live.stepPositions[state.currentStep];
+    state.correctCount = Math.min(state.stepsTotal, state.correctCount + 1);
+    updateHUD();
+    confetti(refs.question);
+    if(state.correctCount >= state.stepsTotal){
+      // wait for visual to reach final step then end
+      live.winPending = true;
+      return;
+    }
+    setTimeout(()=> { if(state.running) nextQuestion(); }, 420);
+  } else {
+    btn.classList.add('wrong'); handleWrong(false, correct);
+  }
+}
+
+function handleWrong(timeout=false, correct=null){
+  if(!state.running) return;
+  if(sfxOn) play(A.err, .9);
+  state.streak = 0;
+  // move back one step
+  state.currentStep = Math.max(0, state.currentStep - 1);
+  live.dinoXTarget = live.stepPositions[state.currentStep];
+  // decrease correctCount? The user asked "until user gives 10 correct answers" — typically correctCount should count cumulative correct answers.
+  // We'll treat correctCount as current step count (so wrong reduces it)
+  state.correctCount = Math.max(0, state.correctCount - 1);
+  updateHUD();
+  if(correct !== null){
+    [...refs.options.querySelectorAll('button')].find(b=> Number(b.textContent) === Number(correct))?.classList.add('correct');
+  }
+  live.dinoYTarget = 12;
+  setTimeout(()=>{ live.dinoYTarget = 0; if(state.running) nextQuestion(); }, 700);
+}
+
+/* Confetti */
+function confetti(anchor){
+  const rect = anchor.getBoundingClientRect();
+  for(let i=0;i<12;i++){
+    const e = document.createElement('div');
+    e.textContent = Math.random()>.5 ? '🎉' : '🪙';
+    e.style.position='fixed';
+    e.style.left = (rect.left + rect.width/2 + rand(-40,40)) + 'px';
+    e.style.top = (rect.top + 10) + 'px';
+    e.style.transition='transform .8s ease, opacity .8s ease';
+    e.style.opacity='1';
+    e.style.zIndex='50';
+    document.body.appendChild(e);
+    requestAnimationFrame(()=>{ e.style.transform = `translate(${rand(-120,120)}px, ${rand(-160,-40)}px) rotate(${rand(-720,720)}deg)`; e.style.opacity='0'; });
+    setTimeout(()=> e.remove(), 900);
+  }
+}
+
+/* Animation loop */
+function animate(t){
+  if(!live.lastTime) live.lastTime = t;
+  const dt = Math.min(40, t - live.lastTime); live.lastTime = t;
+  const lerpT = clamp(dt/100, 0, 1);
+  live.dinoX = lerp(live.dinoX || live.stepPositions[state.currentStep] || state.minX, live.dinoXTarget || live.stepPositions[state.currentStep] || state.minX, easeOut(lerpT));
+  live.dinoY = lerp(live.dinoY || 0, live.dinoYTarget || 0, easeOut(lerpT));
+  live.dinoScale = lerp(live.dinoScale || 1, live.dinoScaleTarget || 1, easeOut(lerpT));
+  refs.dinoWrap.style.transform = `translateX(${live.dinoX}px) translateY(${live.dinoY}px) scale(${live.dinoScale})`;
+  const shScale = clamp(1 - (live.dinoY/24), 0.7, 1.0);
+  refs.dinoShadow.style.transform = `scale(${shScale})`;
+  refs.dinoShadow.style.opacity = String(clamp(1 - (live.dinoY/18), 0.25, 0.9));
+
+  if(state.running && live.winPending){
+    const finalX = live.stepPositions[state.stepsTotal] ?? live.finishX;
+    if(Math.abs(live.dinoX - finalX) < 1.5){
+      live.winPending = false;
+      setTimeout(()=> endGame(true), 160);
+      return;
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+/* Input */
+document.addEventListener('keydown', (e)=>{
+  if(refs.screens.quiz.classList.contains('hidden')) return;
+  if(['1','2','3','4'].includes(e.key)){
+    const idx = Number(e.key)-1;
+    const btn = refs.options.querySelectorAll('button')[idx];
+    if(btn) btn.click();
+  }
+});
+
+/* UI wiring */
+refs.startBtn.addEventListener('click', startGame);
+refs.restartBtn.addEventListener('click', restart);
+refs.sfxToggle.addEventListener('change', e=> sfxOn = e.target.checked);
+refs.musicToggle.addEventListener('change', async e=>{ musicOn = e.target.checked; unlockAudio(); if(musicOn) await play(A.bgm, .5); else A.bgm.pause(); });
+['click','touchstart','keydown'].forEach(ev=> document.addEventListener(ev, unlockAudio, {once:true, passive:true}));
+
+/* recompute on resize */
+window.addEventListener('resize', ()=> {
+  const prevStep = state.currentStep;
+  buildStepPositions();
+  state.currentStep = clamp(prevStep, 0, state.stepsTotal);
+  live.dinoXTarget = live.stepPositions[state.currentStep] ?? live.dinoXTarget;
+});
+
+/* Init */
+(function init(){
+  refs.highScore.textContent = `High Score: ${state.highScore}`;
+  refs.coinsWelcome.textContent = state.bank;
+  buildStepPositions();
+  live.dinoX = live.dinoXTarget = live.stepPositions[0] ?? state.minX;
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>

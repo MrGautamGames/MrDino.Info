@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MrDino.Info - Tic Tac Toe</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-container {
+            width: 100%;
+            max-width: 500px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            padding: 25px;
+        }
+        
+        .brand-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            position: relative;
+        }
+        
+        .brand-header h1 {
+            color: #2c3e50;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        
+        .brand-header p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .brand-header::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(to right, #1a2a6c, #b21f1f, #fdbb2d);
+            border-radius: 2px;
+        }
+        
+        .score-board {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .player-score {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .player-score p {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .player-score span {
+            font-size: 24px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        .mode-toggle {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 50px;
+            padding: 5px;
+            flex: 1;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 50px;
+            background: #ffffff;
+            color: #333;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .mode-btn.active {
+            background: linear-gradient(to right, #1a2a6c, #b21f1f);
+            color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .reset-btn {
+            background: linear-gradient(to right, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .reset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .cell {
+            aspect-ratio: 1;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .cell.x {
+            color: #e74c3c;
+            background-color: #ffebee;
+        }
+        
+        .cell.o {
+            color: #3498db;
+            background-color: #e3f2fd;
+        }
+        
+        .cell:hover {
+            transform: scale(1.03);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 18px;
+            background-color: #f8f9fa;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .status.win {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status.draw {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .brand-footer {
+            text-align: center;
+            padding-top: 15px;
+            border-top: 2px solid #eee;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .brand-footer a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 500px) {
+            .game-container {
+                padding: 15px;
+            }
+            
+            .brand-header h1 {
+                font-size: 24px;
+            }
+            
+            .cell {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="brand-header">
+            <h1><i class="fas fa-dinosaur"></i> MrDino.Info</h1>
+            <p>ULTIMATE TIC TAC TOE</p>
+        </div>
+        
+        <div class="score-board">
+            <div class="player-score">
+                <p>PLAYER X</p>
+                <span id="score-x">0</span>
+            </div>
+            <div class="player-score">
+                <p>DRAWS</p>
+                <span id="score-draw">0</span>
+            </div>
+            <div class="player-score">
+                <p>PLAYER O</p>
+                <span id="score-o">0</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="mode-toggle">
+                <button class="mode-btn active" id="single-player">Computer Mode</button>
+                <button class="mode-btn" id="two-player">Play vs Friend</button>
+            </div>
+            <button class="reset-btn" id="reset"><i class="fas fa-sync-alt"></i> Reset</button>
+        </div>
+        
+        <div class="game-board" id="board"></div>
+        
+        <div class="status" id="status">Choose a mode to start</div>
+        
+        <div class="brand-footer">
+            <p>Created for <a href="https://mrdino.info" target="_blank">MrDino.Info</a> | &copy; 2025</p>
+        </div>
+    </div>
+
+    <script>
+        let board = Array(9).fill(null);
+        let currentPlayer = 'X';
+        let gameMode = null;
+        let gameActive = false;
+        let scores = { X: 0, O: 0, draw: 0 };
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        function startGame(mode) {
+            gameMode = mode;
+            resetGame();
+            document.getElementById('single-player').classList.toggle('active', mode === 'computer');
+            document.getElementById('two-player').classList.toggle('active', mode === 'friend');
+            document.getElementById('reset').style.display = 'block';
+            updateStatus(`Player ${currentPlayer}'s turn`);
+        }
+
+        function resetGame() {
+            board = Array(9).fill(null);
+            currentPlayer = 'X';
+            gameActive = true;
+            renderBoard();
+            document.querySelector('.status').classList.remove('win', 'draw');
+            if (gameMode === 'computer' && currentPlayer === 'O') {
+                setTimeout(aiMove, 500);
+            }
+            updateStatus(`Player ${currentPlayer}'s turn`);
+        }
+
+        function renderBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            board.forEach((cell, index) => {
+                const cellElement = document.createElement('div');
+                cellElement.classList.add('cell');
+                if (cell) {
+                    cellElement.classList.add(cell.toLowerCase());
+                }
+                cellElement.innerText = cell || '';
+                cellElement.dataset.cellIndex = index;
+                cellElement.addEventListener('click', () => handleCellClick(index));
+                boardElement.appendChild(cellElement);
+            });
+        }
+
+        function handleCellClick(index) {
+            if (!gameActive || board[index] !== null) return;
+            board[index] = currentPlayer;
+            renderBoard();
+            if (checkWin(currentPlayer)) {
+                updateStatus(`Player ${currentPlayer} wins!`);
+                scores[currentPlayer]++;
+                updateScores();
+                document.querySelector('.status').classList.add('win');
+                gameActive = false;
+                return;
+            }
+            if (checkDraw()) {
+                updateStatus('Game ended in a draw!');
+                scores.draw++;
+                updateScores();
+                document.querySelector('.status').classList.add('draw');
+                gameActive = false;
+                return;
+            }
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateStatus(`Player ${currentPlayer}'s turn`);
+            if (gameMode === 'computer' && currentPlayer === 'O') {
+                setTimeout(aiMove, 500);
+            }
+        }
+
+        function aiMove() {
+            const bestMove = minimax(board, 'O').index;
+            board[bestMove] = 'O';
+            renderBoard();
+            if (checkWin('O')) {
+                updateStatus('Player O wins!');
+                scores.O++;
+                updateScores();
+                document.querySelector('.status').classList.add('win');
+                gameActive = false;
+                return;
+            }
+            if (checkDraw()) {
+                updateStatus('Game ended in a draw!');
+                scores.draw++;
+                updateScores();
+                document.querySelector('.status').classList.add('draw');
+                gameActive = false;
+                return;
+            }
+            currentPlayer = 'X';
+            updateStatus(`Player ${currentPlayer}'s turn`);
+        }
+
+        function checkWin(player) {
+            return winningConditions.some(condition => {
+                return condition.every(index => board[index] === player);
+            });
+        }
+
+        function checkDraw() {
+            return board.every(cell => cell !== null);
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').innerText = message;
+        }
+
+        function updateScores() {
+            document.getElementById('score-x').innerText = scores.X;
+            document.getElementById('score-o').innerText = scores.O;
+            document.getElementById('score-draw').innerText = scores.draw;
+        }
+
+        function minimax(newBoard, player) {
+            const availSpots = newBoard.reduce((acc, val, idx) => val === null ? acc.concat(idx) : acc, []);
+
+            if (checkWin('X')) return { score: -10 };
+            if (checkWin('O')) return { score: 10 };
+            if (availSpots.length === 0) return { score: 0 };
+
+            const moves = [];
+            for (let i = 0; i < availSpots.length; i++) {
+                const move = {};
+                move.index = availSpots[i];
+                newBoard[availSpots[i]] = player;
+
+                if (player === 'O') {
+                    move.score = minimax(newBoard, 'X').score;
+                } else {
+                    move.score = minimax(newBoard, 'O').score;
+                }
+
+                newBoard[availSpots[i]] = null;
+                moves.push(move);
+            }
+
+            let bestMove;
+            if (player === 'O') {
+                let bestScore = -Infinity;
+                for (let i = 0; i < moves.length; i++) {
+                    if (moves[i].score > bestScore) {
+                        bestScore = moves[i].score;
+                        bestMove = i;
+                    }
+                }
+            } else {
+                let bestScore = Infinity;
+                for (let i = 0; i < moves.length; i++) {
+                    if (moves[i].score < bestScore) {
+                        bestScore = moves[i].score;
+                        bestMove = i;
+                    }
+                }
+            }
+
+            return moves[bestMove];
+        }
+
+        // Initialize game
+        document.getElementById('single-player').addEventListener('click', () => startGame('computer'));
+        document.getElementById('two-player').addEventListener('click', () => startGame('friend'));
+        document.getElementById('reset').addEventListener('click', resetGame);
+        renderBoard();
+        updateStatus(`Choose a mode to start`);
+    </script>
+</body>
+</html>
