@@ -1,0 +1,12 @@
+{
+  "name": "Kaput Meeting (Bim bam)",
+  "short_name": "Kaput Meeting (Bim bam)",
+  "id": "com.example.bimbam",
+  "description": "This is a game example to show how to use a graph extension to create match-3 games with GDevelop. The source can be found directly in GDevelop in the examples list.\n\nControls are arrows and left-shift or mouse.",
+  "orientation": "portrait",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "black",
+  "categories": ["games", "entertainment"],
+  "icons": []
+}
