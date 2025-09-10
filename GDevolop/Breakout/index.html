@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Brick Breaker - GameGini.in</title>
+    <title>Brick Breaker - MrDino.info</title>
     <style>
         * {
             margin: 0;
@@ -102,6 +102,11 @@
             pointer-events: none;
             font-size: 12px;
             color: #bdc3c7;
+            display: none; /* Hidden during gameplay */
+        }
+        
+        body.homepage .bottom-ui {
+            display: block; /* Show only on homepage */
         }
         
         .branding {
@@ -132,12 +137,45 @@
             color: #4CAF50;
             margin-bottom: 20px;
             text-shadow: 0 0 20px rgba(76,175,80,0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
         
         .overlay-subtitle {
             font-size: 24px;
             color: #bdc3c7;
             margin-bottom: 30px;
+        }
+        
+        /* ADDED: Enhanced GameGini branding with heart */
+        .made-by {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 16px;
+            color: #4CAF50;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+            user-select: none;
+        }
+        
+        .made-by .heart {
+            font-size: 20px;
+            color: #FF6B6B;
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.1); }
+            50% { transform: scale(1); }
+            75% { transform: scale(1.1); }
         }
         
         .game-button {
@@ -151,11 +189,14 @@
             margin: 10px;
             font-family: inherit;
             font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
         }
         
         .game-button:hover {
             background: linear-gradient(45deg, #45a049, #4CAF50);
             transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
         }
         
         /* Mobile responsive */
@@ -177,7 +218,7 @@
         }
     </style>
 </head>
-<body>
+<body class="homepage">
     <canvas id="gameCanvas"></canvas>
     
     <!-- UI Elements -->
@@ -197,28 +238,46 @@
     
     <div class="bottom-ui">
         <div>Move mouse to control paddle | Click to launch ball</div>
-        <div class="branding">🎮 Made with ❤️ by MrDino.info 🎮</div>
+        <div class="branding">🎮 Made with ❤️ by <strong>MrDino.info</strong> 🎮</div>
     </div>
     
-    <!-- Start Screen -->
+    <!-- UPDATED: Start Screen with proper button and GameGini branding -->
     <div class="game-overlay" id="startScreen">
-        <div class="overlay-title">BRICK BREAKER</div>
-        <div class="overlay-subtitle">Click anywhere to start</div>
-        <div style="color: #ffeb3b; font-size: 18px;">🎮 Made with ❤️ by MrDino.info 🎮</div>
+        <div class="overlay-title">🧱 BRICK BREAKER</div>
+        <div class="overlay-subtitle">Break all the bricks to advance levels</div>
+        
+        <!-- GameGini branding with animated heart -->
+        <div class="made-by">
+            <span class="heart">❤️</span> Made by <strong>MrDino.info</strong>
+        </div>
+        
+        <div style="color: #bdc3c7; font-size: 14px; margin: 15px 0;">
+            🖱️ Move mouse to control paddle | Click to launch ball
+        </div>
+        
+        <!-- ADDED: Proper START GAME button -->
+        <button class="game-button" onclick="startNewGame()">🎮 START GAME</button>
     </div>
     
-    <!-- Game Over Screen -->
+    <!-- UPDATED: Game Over Screen with GameGini branding -->
     <div class="game-overlay hidden" id="gameOverScreen">
         <div class="overlay-title" style="color: #FF6B6B;">Game Over!</div>
         <div class="overlay-subtitle" id="finalScore">Score: 0</div>
-        <button class="game-button" onclick="startNewGame()">Play Again</button>
+        
+        <!-- GameGini branding on game over too -->
+        <div class="made-by">
+            <span class="heart">❤️</span> Made by <strong>MrDino.info</strong>
+        </div>
+        
+        <button class="game-button" onclick="startNewGame()">🎮 Play Again</button>
+        <button class="game-button" onclick="returnToHome()" style="background: linear-gradient(45deg, #6c757d, #495057);">🏠 Main Menu</button>
     </div>
 
     <script>
         // ===== AUDIO SYSTEM SETUP =====
         let audioContext = null;
-        let musicEnabled = true;  // Default ON
-        let sfxEnabled = true;    // Default ON
+        let musicEnabled = true;
+        let sfxEnabled = true;
         let backgroundMusicLoop = null;
         let masterGain = null;
         let musicGain = null;
@@ -735,7 +794,10 @@
             requestAnimationFrame(gameLoop);
         }
         
+        // UPDATED: Game functions with proper state management
         function startNewGame() {
+            initAudio(); // Initialize audio on user interaction
+            
             gameState = 'playing';
             score = 0;
             lives = 3;
@@ -744,12 +806,21 @@
             resetBall();
             document.getElementById('startScreen').classList.add('hidden');
             document.getElementById('gameOverScreen').classList.add('hidden');
+            document.body.classList.remove('homepage'); // Hide footer during gameplay
             
             // Start background music
             if (!backgroundMusicLoop) {
                 createBackgroundMusic();
                 backgroundMusicLoop = true;
             }
+        }
+        
+        // ADDED: Return to home function
+        function returnToHome() {
+            gameState = 'menu';
+            document.getElementById('startScreen').classList.remove('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.body.classList.add('homepage'); // Show footer on homepage
         }
         
         // Event handlers
@@ -763,11 +834,8 @@
         });
         
         canvas.addEventListener('click', (e) => {
-            initAudio();
-            
-            if (gameState === 'menu') {
-                startNewGame();
-            } else if (gameState === 'playing') {
+            // REMOVED: Auto-start on click - now only launches ball during gameplay
+            if (gameState === 'playing') {
                 launchBall();
             }
         });
@@ -786,11 +854,7 @@
         
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            initAudio();
-            
-            if (gameState === 'menu') {
-                startNewGame();
-            } else if (gameState === 'playing') {
+            if (gameState === 'playing') {
                 launchBall();
             }
         });
@@ -801,10 +865,7 @@
             keys[e.code] = true;
             if (e.code === 'Space') {
                 e.preventDefault();
-                initAudio();
-                if (gameState === 'menu') {
-                    startNewGame();
-                } else if (gameState === 'playing') {
+                if (gameState === 'playing') {
                     launchBall();
                 }
             }
