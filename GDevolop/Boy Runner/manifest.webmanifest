@@ -1,0 +1,12 @@
+{
+  "name": "Divine Eye (Endless up runner)",
+  "short_name": "Divine Eye (Endless up runner)",
+  "id": "com.example.endlessuprunner",
+  "description": "",
+  "orientation": "landscape",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "black",
+  "categories": ["games", "entertainment"],
+  "icons": []
+}
