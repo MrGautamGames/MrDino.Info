@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cave Explorer Pro - MrDino.Info</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Exo 2', sans-serif;
+            color: white;
+            overflow: hidden;
+            user-select: none;
+            background: #000;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Game Canvas - Full Screen */
+        #gameCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 1;
+            cursor: none;
+        }
+
+        /* Game HUD Overlay */
+        .game-hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .hud-left, .hud-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .hud-item {
+            background: linear-gradient(145deg, rgba(0,200,255,0.2), rgba(0,150,255,0.1));
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(0,200,255,0.4);
+            backdrop-filter: blur(10px);
+            font-weight: 600;
+            font-size: 14px;
+            text-shadow: 0 0 10px rgba(0,200,255,0.5);
+            box-shadow: 0 0 15px rgba(0,200,255,0.2);
+        }
+
+        .hud-value {
+            color: #00ff88;
+            font-family: 'Orbitron', monospace;
+            margin-left: 5px;
+        }
+
+        .fuel-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .fuel-bar {
+            width: 80px;
+            height: 8px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid rgba(0,200,255,0.3);
+        }
+
+        .fuel-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa00, #00ff88);
+            transition: width 0.2s ease;
+            box-shadow: 0 0 8px rgba(0,255,136,0.5);
+        }
+
+        .immunity-indicator {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #00ffcc, #0080ff);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-family: 'Orbitron', monospace;
+            text-align: center;
+            z-index: 15;
+            display: none;
+            animation: pulse 0.5s infinite alternate;
+            box-shadow: 0 0 20px rgba(0,255,204,0.6);
+        }
+
+        @keyframes pulse {
+            from { transform: translateX(-50%) scale(1); }
+            to { transform: translateX(-50%) scale(1.05); }
+        }
+
+        /* Menu Screens */
+        .menu-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(ellipse at center, rgba(15,20,35,0.98) 0%, rgba(0,0,0,0.98) 70%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .menu-content {
+            text-align: center;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .game-title {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(2rem, 5vw, 4rem);
+            font-weight: 900;
+            background: linear-gradient(45deg, #00c8ff, #0080ff, #0040ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            text-shadow: 0 0 30px rgba(0,200,255,0.5);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.2); }
+        }
+
+        .menu-button {
+            background: linear-gradient(45deg, #00c8ff, #0080ff);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: clamp(14px, 2vw, 18px);
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            font-family: 'Exo 2', sans-serif;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,200,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            pointer-events: all;
+        }
+
+        .menu-button:hover {
+            background: linear-gradient(45deg, #00ffcc, #00c8ff);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,255,204,0.4);
+        }
+
+        .branding {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #888;
+            font-weight: 300;
+        }
+
+        .branding strong {
+            color: #00c8ff;
+            font-weight: 600;
+        }
+
+        /* Guide Styles */
+        .guide-section {
+            text-align: left;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            border-left: 4px solid #00c8ff;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .guide-section h3 {
+            color: #00ff88;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .guide-section p, .guide-section ul {
+            color: #ccc;
+            line-height: 1.5;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .key-highlight {
+            background: linear-gradient(45deg, #00c8ff, #0080ff);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+        }
+
+        /* Touch Control Indicators */
+        .touch-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 200, 255, 0.2);
+            color: #00c8ff;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+            z-index: 20;
+            border: 1px solid rgba(0, 200, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .game-hud {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .hud-item {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+
+            .fuel-bar {
+                width: 60px;
+            }
+
+            .menu-content {
+                padding: 15px;
+            }
+
+            .touch-indicator {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Start Screen -->
+    <div id="startScreen" class="menu-screen">
+        <div class="menu-content">
+            <h1 class="game-title">🚀 CAVE EXPLORER PRO 🚀</h1>
+            <p style="margin: 20px 0; font-size: 1.1em; color: #ccc;">
+                Navigate through endless underground caverns with your advanced jetpack!
+            </p>
+            <p style="margin: 15px 0; font-size: 1em; color: #ffaa00;">
+                🦇 Dodge cave bats • 🪨 Avoid rock hazards • 🔋 Collect battery packs
+            </p>
+            <div style="margin: 30px 0;">
+                <button class="menu-button" onclick="startGame()">🚀 START MISSION</button>
+                <button class="menu-button" onclick="showHowToPlay()">📖 HOW TO PLAY</button>
+            </div>
+            <div class="branding">Made with ❤️ by <strong>MrDino.Info</strong></div>
+        </div>
+    </div>
+
+    <!-- How to Play Screen -->
+    <div id="howToPlayScreen" class="menu-screen" style="display: none;">
+        <div class="menu-content">
+            <h2 style="font-family: 'Orbitron', monospace; font-size: 2em; color: #00c8ff; margin-bottom: 20px;">
+                🎮 MISSION BRIEFING
+            </h2>
+
+            <div class="guide-section">
+                <h3>🚀 The Mission</h3>
+                <p>Navigate through dangerous cave systems filled with bats, rock hazards, and power-ups. Master your jetpack controls for smooth flight!</p>
+            </div>
+
+            <div class="guide-section">
+                <h3>⚡ Game Elements</h3>
+                <ul>
+                    <li><strong>🦇 Cave Bats:</strong> Fixed positions that move toward you - plan your route carefully</li>
+                    <li><strong>🪨 Rock Hazards:</strong> Strategically placed obstacles in challenging formations</li>
+                    <li><strong>🔋 Battery Packs:</strong> Fully restore your jetpack fuel - essential for survival</li>
+                    <li><strong>🛡️ Immunity Shields:</strong> 5 seconds of invincibility for dangerous sections</li>
+                </ul>
+            </div>
+
+            <div class="guide-section">
+                <h3>🎮 Controls</h3>
+                <p><strong>PC:</strong> <span class="key-highlight">WASD</span> or <span class="key-highlight">Arrow Keys</span> = Jetpack Direction</p>
+                <p><strong>Mobile:</strong> Touch anywhere on screen for smooth directional control</p>
+            </div>
+
+            <div class="guide-section">
+                <h3>🏆 Pro Strategies</h3>
+                <ul>
+                    <li>Collect battery packs before your fuel gets critically low</li>
+                    <li>Use immunity shields strategically before entering danger zones</li>
+                    <li>Bats move toward you - time your movements to avoid them</li>
+                    <li>Smooth movements are key - avoid sudden direction changes</li>
+                </ul>
+            </div>
+
+            <button class="menu-button" onclick="hideHowToPlay()">🚀 READY FOR MISSION</button>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOver" class="menu-screen" style="display: none;">
+        <div class="menu-content">
+            <h2 style="font-family: 'Orbitron', monospace; color: #ff4444; font-size: 2.5em;">💀 MISSION FAILED 💀</h2>
+            <p id="finalScore" style="margin: 20px 0; font-size: 1.3em;"></p>
+            <div id="missionStats" style="margin: 20px 0; color: #ccc;"></div>
+            <div>
+                <button class="menu-button" onclick="restartGame()">🔄 RETRY MISSION</button>
+                <button class="menu-button" onclick="showStart()">🏠 MAIN MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Game HUD -->
+    <div class="game-hud" id="gameHUD" style="display: none;">
+        <div class="hud-left">
+            <div class="hud-item">
+                🎯 <span class="hud-value" id="score">0</span>
+            </div>
+            <div class="hud-item">
+                📍 <span class="hud-value" id="distance">0</span>m
+            </div>
+            <div class="hud-item">
+                💚 <span class="hud-value" id="lives">3</span>
+            </div>
+        </div>
+        <div class="hud-right">
+            <div class="hud-item fuel-container">
+                ⛽ <div class="fuel-bar"><div class="fuel-fill" id="fuelBar"></div></div>
+            </div>
+            <div class="hud-item">
+                🚀 <span class="hud-value" id="gameSpeed">1.0</span>x
+            </div>
+        </div>
+    </div>
+
+    <!-- Immunity Indicator -->
+    <div id="immunityIndicator" class="immunity-indicator">
+        🛡️ IMMUNITY ACTIVE <span id="immunityTimer">5</span>s
+    </div>
+
+    <!-- Touch Control Indicator -->
+    <div id="touchIndicator" class="touch-indicator">
+        Touch screen for smooth jetpack control
+    </div>
+
+    <script>
+        // Device detection
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        // Game canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Make canvas full screen
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // Game variables
+        let gameState = 'start';
+        let score = 0;
+        let distance = 0;
+        let lives = 3;
+        let gameSpeed = 2;
+        let baseGameSpeed = 2;
+        let speedMultiplier = 1.0;
+        let batsAvoided = 0;
+        let rocksAvoided = 0;
+        let batteriesCollected = 0;
+        let shieldsCollected = 0;
+        let immunityTime = 0;
+        let gameTime = 0;
+
+        // Touch control variables
+        let touchActive = false;
+        let touchX = 0;
+        let touchY = 0;
+
+        // Player with jetpack
+        const player = {
+            x: 100,
+            y: 0,
+            width: 24,
+            height: 32,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 4,
+            fuel: 100,
+            maxFuel: 100,
+            fuelConsumption: 0.35,
+            fuelRegeneration: 0.08,
+            isImmune: false,
+            immunityTimer: 0,
+
+            // Shield position tracking
+            shieldX: 0,
+            shieldY: 0,
+
+            // Animation properties
+            frame: 0,
+            animationSpeed: 0.2,
+            facing: 1,
+            isThrusting: false,
+            jetpackFlame: 0
+        };
+
+        // Game objects
+        let caveBats = [];
+        let rockHazards = [];
+        let batteryPacks = [];
+        let immunityShields = [];
+        let particles = [];
+        let caveWalls = [];
+        let jetpackParticles = [];
+        let immunityParticles = [];
+        let batteryParticles = [];
+
+        // Spawn timers
+        let batSpawnTimer = 0;
+        let rockSpawnTimer = 0;
+
+        // Audio context and music
+        let audioContext;
+        let backgroundMusic = null;
+        let menuMusic = null;
+        let currentMusic = null;
+
+        // Initialize controls
+        function initControls() {
+            if (isTouchDevice) {
+                setupTouchControls();
+            } else {
+                setupKeyboardControls();
+            }
+        }
+
+        // Flappy Bird style touch controls
+        function setupTouchControls() {
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                touchActive = true;
+                touchX = (touch.clientX - rect.left) / rect.width;
+                touchY = (touch.clientY - rect.top) / rect.height;
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!touchActive) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                touchX = (touch.clientX - rect.left) / rect.width;
+                touchY = (touch.clientY - rect.top) / rect.height;
+            });
+
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                touchActive = false;
+            });
+
+            // Prevent scrolling
+            document.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        }
+
+        // Keyboard controls
+        const keys = {};
+
+        function setupKeyboardControls() {
+            document.addEventListener('keydown', (e) => {
+                keys[e.code] = true;
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                    e.preventDefault();
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                keys[e.code] = false;
+            });
+        }
+
+        // Audio and music initialization
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                createBackgroundMusic();
+                createMenuMusic();
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+
+        // Create background music using Web Audio API
+        function createBackgroundMusic() {
+            if (!audioContext) return;
+
+            const musicGain = audioContext.createGain();
+            musicGain.connect(audioContext.destination);
+            musicGain.gain.setValueAtTime(0.1, audioContext.currentTime);
+
+            // Create a simple ambient background track
+            function playAmbientTone(frequency, startTime, duration) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(musicGain);
+
+                oscillator.frequency.setValueAtTime(frequency, startTime);
+                oscillator.type = 'sine';
+
+                gainNode.gain.setValueAtTime(0, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.5);
+                gainNode.gain.linearRampToValueAtTime(0.3, startTime + duration - 0.5);
+                gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+
+                oscillator.start(startTime);
+                oscillator.stop(startTime + duration);
+            }
+
+            // Ambient cave exploration music
+            function startBackgroundMusic() {
+                const now = audioContext.currentTime;
+                const baseFreq = 110; // A2
+
+                // Deep drone base
+                playAmbientTone(baseFreq, now, 8);
+                playAmbientTone(baseFreq * 1.5, now + 2, 6);
+                playAmbientTone(baseFreq * 2, now + 4, 4);
+
+                // Schedule next cycle
+                setTimeout(() => {
+                    if (gameState === 'playing' && backgroundMusic) {
+                        startBackgroundMusic();
+                    }
+                }, 6000);
+            }
+
+            backgroundMusic = { start: startBackgroundMusic, gain: musicGain };
+        }
+
+        // Create menu music
+        function createMenuMusic() {
+            if (!audioContext) return;
+
+            const musicGain = audioContext.createGain();
+            musicGain.connect(audioContext.destination);
+            musicGain.gain.setValueAtTime(0.08, audioContext.currentTime);
+
+            function playMenuTone(frequency, startTime, duration) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(musicGain);
+
+                oscillator.frequency.setValueAtTime(frequency, startTime);
+                oscillator.type = 'triangle';
+
+                gainNode.gain.setValueAtTime(0, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.4, startTime + 0.2);
+                gainNode.gain.linearRampToValueAtTime(0.4, startTime + duration - 0.2);
+                gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+
+                oscillator.start(startTime);
+                oscillator.stop(startTime + duration);
+            }
+
+            function startMenuMusic() {
+                const now = audioContext.currentTime;
+                const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+
+                notes.forEach((freq, i) => {
+                    playMenuTone(freq, now + i * 1.5, 1.2);
+                });
+
+                setTimeout(() => {
+                    if ((gameState === 'start' || gameState === 'gameOver') && menuMusic) {
+                        startMenuMusic();
+                    }
+                }, 8000);
+            }
+
+            menuMusic = { start: startMenuMusic, gain: musicGain };
+        }
+
+        function playSound(frequency, duration, type = 'sine', volume = 0.05) {
+            if (!audioContext) return;
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        // Start appropriate music
+        function startMusic(type) {
+            if (!audioContext) return;
+
+            // Stop current music
+            stopMusic();
+
+            if (type === 'menu' && menuMusic) {
+                currentMusic = menuMusic;
+                menuMusic.start();
+            } else if (type === 'game' && backgroundMusic) {
+                currentMusic = backgroundMusic;
+                backgroundMusic.start();
+            }
+        }
+
+        function stopMusic() {
+            currentMusic = null;
+        }
+
+        // Get input values
+        function getInputValues() {
+            let inputX = 0;
+            let inputY = 0;
+
+            if (isTouchDevice && touchActive) {
+                // Convert touch position to smooth input
+                const playerCenterX = (player.x + player.width / 2) / canvas.width;
+                const playerCenterY = (player.y + player.height / 2) / canvas.height;
+
+                inputX = (touchX - playerCenterX) * 2; // Smooth horizontal control
+                inputY = (touchY - playerCenterY) * 2; // Smooth vertical control
+
+                // Limit input range
+                inputX = Math.max(-1, Math.min(1, inputX));
+                inputY = Math.max(-1, Math.min(1, inputY));
+            } else {
+                // Keyboard input
+                if (keys['KeyW'] || keys['ArrowUp']) inputY -= 1;
+                if (keys['KeyS'] || keys['ArrowDown']) inputY += 1;
+                if (keys['KeyA'] || keys['ArrowLeft']) inputX -= 1;
+                if (keys['KeyD'] || keys['ArrowRight']) inputX += 1;
+            }
+
+            return { x: inputX, y: inputY };
+        }
+
+        // Generate cave walls
+        function generateCaveWalls() {
+            if (caveWalls.length === 0 || caveWalls[caveWalls.length - 1].x < canvas.width) {
+                const lastWall = caveWalls.length > 0 ? caveWalls[caveWalls.length - 1] : null;
+
+                let topHeight = lastWall ? lastWall.topHeight + (Math.random() - 0.5) * 50 : canvas.height * 0.25;
+                let bottomHeight = lastWall ? lastWall.bottomHeight + (Math.random() - 0.5) * 50 : canvas.height * 0.25;
+
+                // Ensure good passage size
+                const minGap = canvas.height * 0.3;
+                const gap = canvas.height - topHeight - bottomHeight;
+
+                if (gap < minGap) {
+                    const adjustment = (minGap - gap) / 2;
+                    topHeight = Math.max(canvas.height * 0.1, topHeight - adjustment);
+                    bottomHeight = Math.max(canvas.height * 0.1, bottomHeight - adjustment);
+                }
+
+                caveWalls.push({
+                    x: caveWalls.length > 0 ? caveWalls[caveWalls.length - 1].x + 25 : canvas.width,
+                    topHeight: Math.max(canvas.height * 0.1, Math.min(canvas.height * 0.4, topHeight)),
+                    bottomHeight: Math.max(canvas.height * 0.1, Math.min(canvas.height * 0.4, bottomHeight)),
+                    roughness: Math.random() * 10 + 5
+                });
+            }
+        }
+
+        // Get safe Y position within cave
+        function getSafeYPosition(objectX, objectHeight, buffer = 40) {
+            let wallSegment = null;
+            for (const wall of caveWalls) {
+                if (objectX >= wall.x && objectX <= wall.x + 25) {
+                    wallSegment = wall;
+                    break;
+                }
+            }
+
+            if (!wallSegment) {
+                const minY = canvas.height * 0.2;
+                const maxY = canvas.height * 0.8 - objectHeight;
+                return minY + Math.random() * (maxY - minY);
+            }
+
+            const safeTop = wallSegment.topHeight + buffer;
+            const safeBottom = canvas.height - wallSegment.bottomHeight - buffer - objectHeight;
+
+            if (safeBottom <= safeTop) {
+                const availableTop = wallSegment.topHeight + 15;
+                const availableBottom = canvas.height - wallSegment.bottomHeight - 15 - objectHeight;
+                return availableTop + (availableBottom - availableTop) / 2;
+            }
+
+            return safeTop + Math.random() * (safeBottom - safeTop);
+        }
+
+        // Generate cave bats
+        function generateCaveBats() {
+            batSpawnTimer++;
+
+            if (batSpawnTimer > 180 + Math.random() * 120) {
+                batSpawnTimer = 0;
+
+                const batX = canvas.width + 50;
+                const batY = getSafeYPosition(batX, 20, 50);
+
+                caveBats.push({
+                    x: batX,
+                    y: batY,
+                    width: 28,
+                    height: 18,
+                    velocityX: 0,
+                    velocityY: 0,
+                    wingFlap: Math.random() * Math.PI * 2,
+                    fixedTargetX: player.x,
+                    fixedTargetY: player.y,
+                    moveSpeed: 1.2 + speedMultiplier * 0.3,
+                    moveTimer: 0,
+                    health: 1
+                });
+
+                playSound(350, 0.2, 'triangle', 0.03);
+            }
+        }
+
+        // Generate rock hazards
+        function generateRockHazards() {
+            rockSpawnTimer++;
+
+            if (rockSpawnTimer > 240 + Math.random() * 180) {
+                rockSpawnTimer = 0;
+
+                const pattern = Math.random();
+
+                if (pattern < 0.4) {
+                    // Single strategic rock
+                    const rockX = canvas.width;
+                    const rockY = getSafeYPosition(rockX, 25, 60);
+
+                    rockHazards.push({
+                        x: rockX,
+                        y: rockY,
+                        width: 20 + Math.random() * 10,
+                        height: 20 + Math.random() * 10,
+                        velocityX: -gameSpeed,
+                        velocityY: 0,
+                        rotation: Math.random() * Math.PI * 2,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1,
+                        type: 'static'
+                    });
+                } else if (pattern < 0.7) {
+                    // Vertical line with gap
+                    const rockX = canvas.width;
+                    const centerY = canvas.height / 2;
+                    const gapSize = 100;
+
+                    // Top rocks
+                    for (let i = 0; i < 2; i++) {
+                        const rockY = centerY - gapSize - (i + 1) * 40;
+                        if (rockY > 50) {
+                            rockHazards.push({
+                                x: rockX,
+                                y: rockY,
+                                width: 15 + Math.random() * 8,
+                                height: 15 + Math.random() * 8,
+                                velocityX: -gameSpeed,
+                                velocityY: 0,
+                                rotation: Math.random() * Math.PI * 2,
+                                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                                type: 'static'
+                            });
+                        }
+                    }
+
+                    // Bottom rocks
+                    for (let i = 0; i < 2; i++) {
+                        const rockY = centerY + gapSize + i * 40;
+                        if (rockY < canvas.height - 80) {
+                            rockHazards.push({
+                                x: rockX,
+                                y: rockY,
+                                width: 15 + Math.random() * 8,
+                                height: 15 + Math.random() * 8,
+                                velocityX: -gameSpeed,
+                                velocityY: 0,
+                                rotation: Math.random() * Math.PI * 2,
+                                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                                type: 'static'
+                            });
+                        }
+                    }
+                } else {
+                    // Horizontal line with gap
+                    const rockY = getSafeYPosition(canvas.width, 15, 50);
+                    const gapStart = Math.random() * 150 + 50;
+                    const gapSize = 80;
+
+                    for (let i = 0; i < 5; i++) {
+                        const rockX = canvas.width + i * 30;
+                        if (i * 30 < gapStart || i * 30 > gapStart + gapSize) {
+                            rockHazards.push({
+                                x: rockX,
+                                y: rockY + (Math.random() - 0.5) * 20,
+                                width: 12 + Math.random() * 6,
+                                height: 12 + Math.random() * 6,
+                                velocityX: -gameSpeed,
+                                velocityY: 0,
+                                rotation: Math.random() * Math.PI * 2,
+                                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                                type: 'static'
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Generate battery packs
+        function generateBatteryPacks() {
+            if (gameTime % (480 + Math.floor(Math.random() * 240)) === 0) {
+                const batteryX = canvas.width;
+                const batteryY = getSafeYPosition(batteryX, 20, 60);
+
+                batteryPacks.push({
+                    x: batteryX,
+                    y: batteryY,
+                    width: 18,
+                    height: 24,
+                    velocityX: -gameSpeed,
+                    pulse: 0,
+                    collected: false,
+                    sparkleTimer: 0
+                });
+            }
+        }
+
+        // Generate immunity shields
+        function generateImmunityShields() {
+            if (Math.random() < 0.002) {
+                const shieldX = canvas.width;
+                const shieldY = getSafeYPosition(shieldX, 20, 60);
+
+                immunityShields.push({
+                    x: shieldX,
+                    y: shieldY,
+                    width: 20,
+                    height: 20,
+                    velocityX: -gameSpeed,
+                    rotation: 0,
+                    pulse: 0,
+                    collected: false
+                });
+            }
+        }
+
+        // Update player with smooth movement
+        function updatePlayer() {
+            const input = getInputValues();
+            let thrustActive = false;
+
+            // Handle immunity
+            if (player.isImmune) {
+                player.immunityTimer--;
+                immunityTime = Math.ceil(player.immunityTimer / 60);
+
+                if (player.immunityTimer <= 0) {
+                    player.isImmune = false;
+                    document.getElementById('immunityIndicator').style.display = 'none';
+                }
+
+                // Update shield position to follow player smoothly
+                player.shieldX = player.x;
+                player.shieldY = player.y;
+
+                // Immunity particles
+                if (Math.random() < 0.3) {
+                    immunityParticles.push({
+                        x: player.x + Math.random() * player.width,
+                        y: player.y + Math.random() * player.height,
+                        velocityX: (Math.random() - 0.5) * 4,
+                        velocityY: (Math.random() - 0.5) * 4,
+                        life: 30,
+                        color: '#00ffcc',
+                        size: Math.random() * 2 + 1
+                    });
+                }
+            }
+
+            // Smooth jetpack thrust mechanics
+            if (Math.abs(input.x) > 0.1 || Math.abs(input.y) > 0.1) {
+                if (player.fuel > 0) {
+                    // Smooth acceleration based on input
+                    player.velocityX += input.x * 0.6;
+                    player.velocityY += input.y * 0.5;
+                    player.fuel -= player.fuelConsumption;
+                    player.isThrusting = true;
+                    thrustActive = true;
+
+                    if (Math.abs(input.x) > 0.1) {
+                        player.facing = input.x > 0 ? 1 : -1;
+                    }
+
+                    // Enhanced jetpack particles
+                    if (Math.random() < 0.8) {
+                        jetpackParticles.push({
+                            x: player.x + player.width / 2 - player.facing * 10,
+                            y: player.y + player.height - 3,
+                            velocityX: -input.x * 4 + (Math.random() - 0.5) * 3,
+                            velocityY: -input.y * 4 + Math.random() * 3 + 1,
+                            life: 25,
+                            color: Math.random() < 0.6 ? '#ff6600' : '#ffaa00',
+                            size: Math.random() * 2 + 1
+                        });
+                    }
+                }
+            } else {
+                player.isThrusting = false;
+            }
+
+            // Fuel regeneration
+            if (!thrustActive && player.fuel < player.maxFuel) {
+                player.fuel += player.fuelRegeneration;
+            }
+            player.fuel = Math.max(0, Math.min(player.maxFuel, player.fuel));
+
+            // Gravity
+            player.velocityY += 0.15;
+
+            // Smooth air resistance for better control
+            player.velocityX *= 0.92;
+            player.velocityY *= 0.97;
+
+            // Speed limits
+            const maxSpeedX = player.speed * 2.2;
+            const maxSpeedY = player.speed * 1.8;
+            player.velocityX = Math.max(-maxSpeedX, Math.min(maxSpeedX, player.velocityX));
+            player.velocityY = Math.max(-maxSpeedY, Math.min(maxSpeedY, player.velocityY));
+
+            // Smooth position update
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+
+            // Boundary checking
+            if (player.x < 0) {
+                player.x = 0;
+                player.velocityX = 0;
+            }
+            if (player.x > canvas.width - player.width) {
+                player.x = canvas.width - player.width;
+                player.velocityX = 0;
+            }
+            if (player.y < 0) {
+                player.y = 0;
+                player.velocityY = 0;
+            }
+            if (player.y > canvas.height - player.height) {
+                player.y = canvas.height - player.height;
+                player.velocityY = 0;
+            }
+
+            // Animation
+            player.frame += player.animationSpeed;
+            player.jetpackFlame += 0.6;
+        }
+
+        // Update cave bats
+        function updateCaveBats() {
+            for (let i = caveBats.length - 1; i >= 0; i--) {
+                const bat = caveBats[i];
+
+                bat.moveTimer++;
+
+                // Update target every 60 frames
+                if (bat.moveTimer % 60 === 0) {
+                    bat.fixedTargetX = player.x;
+                    bat.fixedTargetY = player.y;
+                }
+
+                // Move toward target
+                const dx = bat.fixedTargetX - bat.x;
+                const dy = bat.fixedTargetY - bat.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 5) {
+                    bat.velocityX += (dx / distance) * bat.moveSpeed * 0.02;
+                    bat.velocityY += (dy / distance) * bat.moveSpeed * 0.02;
+                }
+
+                // Speed limits
+                const currentSpeed = Math.sqrt(bat.velocityX * bat.velocityX + bat.velocityY * bat.velocityY);
+                const maxSpeed = bat.moveSpeed;
+
+                if (currentSpeed > maxSpeed) {
+                    bat.velocityX = (bat.velocityX / currentSpeed) * maxSpeed;
+                    bat.velocityY = (bat.velocityY / currentSpeed) * maxSpeed;
+                }
+
+                // Physics
+                bat.velocityX *= 0.95;
+                bat.velocityY *= 0.95;
+
+                // Update position
+                bat.x += bat.velocityX - gameSpeed;
+                bat.y += bat.velocityY;
+                bat.wingFlap += 0.4;
+
+                // Boundaries
+                if (bat.y < 20) bat.y = 20;
+                if (bat.y > canvas.height - bat.height - 20) bat.y = canvas.height - bat.height - 20;
+
+                // Remove off-screen bats
+                if (bat.x < -100) {
+                    caveBats.splice(i, 1);
+                    batsAvoided++;
+                    score += 25;
+                }
+            }
+        }
+
+        // Update rock hazards
+        function updateRockHazards() {
+            for (let i = rockHazards.length - 1; i >= 0; i--) {
+                const rock = rockHazards[i];
+
+                rock.x += rock.velocityX;
+                rock.y += rock.velocityY;
+                rock.rotation += rock.rotationSpeed;
+
+                if (rock.x < -rock.width) {
+                    rockHazards.splice(i, 1);
+                    rocksAvoided++;
+                    score += 15;
+                }
+            }
+        }
+
+        // Update battery packs
+        function updateBatteryPacks() {
+            for (let i = batteryPacks.length - 1; i >= 0; i--) {
+                const battery = batteryPacks[i];
+
+                battery.x += battery.velocityX;
+                battery.pulse += 0.1;
+                battery.sparkleTimer++;
+
+                // Check collection
+                if (!battery.collected && 
+                    player.x < battery.x + battery.width &&
+                    player.x + player.width > battery.x &&
+                    player.y < battery.y + battery.height &&
+                    player.y + player.height > battery.y) {
+
+                    player.fuel = player.maxFuel;
+                    battery.collected = true;
+                    batteriesCollected++;
+                    score += 50;
+
+                    playSound(600, 0.3, 'square', 0.08);
+
+                    // Collection particles
+                    for (let j = 0; j < 15; j++) {
+                        batteryParticles.push({
+                            x: battery.x + battery.width/2,
+                            y: battery.y + battery.height/2,
+                            velocityX: (Math.random() - 0.5) * 6,
+                            velocityY: (Math.random() - 0.5) * 6,
+                            life: 40,
+                            color: Math.random() < 0.5 ? '#00ff00' : '#88ff00',
+                            size: Math.random() * 3 + 1
+                        });
+                    }
+                }
+
+                // Sparkle particles
+                if (battery.sparkleTimer % 10 === 0 && !battery.collected) {
+                    batteryParticles.push({
+                        x: battery.x + Math.random() * battery.width,
+                        y: battery.y + Math.random() * battery.height,
+                        velocityX: (Math.random() - 0.5) * 2,
+                        velocityY: (Math.random() - 0.5) * 2,
+                        life: 30,
+                        color: '#88ff00',
+                        size: Math.random() * 2 + 1
+                    });
+                }
+
+                if (battery.x < -battery.width || battery.collected) {
+                    batteryPacks.splice(i, 1);
+                }
+            }
+        }
+
+        // Update immunity shields
+        function updateImmunityShields() {
+            for (let i = immunityShields.length - 1; i >= 0; i--) {
+                const shield = immunityShields[i];
+
+                shield.x += shield.velocityX;
+                shield.rotation += 0.05;
+                shield.pulse += 0.1;
+
+                // Check collection
+                if (!shield.collected && 
+                    player.x < shield.x + shield.width &&
+                    player.x + player.width > shield.x &&
+                    player.y < shield.y + shield.height &&
+                    player.y + player.height > shield.y) {
+
+                    // Activate immunity
+                    player.isImmune = true;
+                    player.immunityTimer = 300;
+                    player.shieldX = player.x;
+                    player.shieldY = player.y;
+                    shield.collected = true;
+                    shieldsCollected++;
+                    score += 100;
+
+                    document.getElementById('immunityIndicator').style.display = 'block';
+                    document.getElementById('immunityTimer').textContent = '5';
+
+                    playSound(800, 0.3, 'sine', 0.1);
+
+                    // Collection particles
+                    for (let j = 0; j < 20; j++) {
+                        immunityParticles.push({
+                            x: shield.x + shield.width/2,
+                            y: shield.y + shield.height/2,
+                            velocityX: (Math.random() - 0.5) * 8,
+                            velocityY: (Math.random() - 0.5) * 8,
+                            life: 40,
+                            color: '#00ffcc',
+                            size: Math.random() * 3 + 1
+                        });
+                    }
+                }
+
+                if (shield.x < -shield.width || shield.collected) {
+                    immunityShields.splice(i, 1);
+                }
+            }
+        }
+
+        // Update particles
+        function updateParticles() {
+            // Regular particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                particle.x += particle.velocityX;
+                particle.y += particle.velocityY;
+                particle.life--;
+
+                if (particle.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Jetpack particles
+            for (let i = jetpackParticles.length - 1; i >= 0; i--) {
+                const particle = jetpackParticles[i];
+                particle.x += particle.velocityX;
+                particle.y += particle.velocityY;
+                particle.velocityY += 0.12;
+                particle.life--;
+
+                if (particle.life <= 0) {
+                    jetpackParticles.splice(i, 1);
+                }
+            }
+
+            // Immunity particles
+            for (let i = immunityParticles.length - 1; i >= 0; i--) {
+                const particle = immunityParticles[i];
+                particle.x += particle.velocityX;
+                particle.y += particle.velocityY;
+                particle.velocityX *= 0.98;
+                particle.velocityY *= 0.98;
+                particle.life--;
+
+                if (particle.life <= 0) {
+                    immunityParticles.splice(i, 1);
+                }
+            }
+
+            // Battery particles
+            for (let i = batteryParticles.length - 1; i >= 0; i--) {
+                const particle = batteryParticles[i];
+                particle.x += particle.velocityX;
+                particle.y += particle.velocityY;
+                particle.velocityX *= 0.97;
+                particle.velocityY *= 0.97;
+                particle.life--;
+
+                if (particle.life <= 0) {
+                    batteryParticles.splice(i, 1);
+                }
+            }
+        }
+
+        // Update cave walls
+        function updateCaveWalls() {
+            for (let i = caveWalls.length - 1; i >= 0; i--) {
+                caveWalls[i].x -= gameSpeed;
+
+                if (caveWalls[i].x < -25) {
+                    caveWalls.splice(i, 1);
+                }
+            }
+        }
+
+        // Collision detection
+        function checkCollisions() {
+            if (player.isImmune) return;
+
+            const hitboxReduction = 2;
+            const playerHitbox = {
+                x: player.x + hitboxReduction,
+                y: player.y + hitboxReduction,
+                width: player.width - hitboxReduction * 2,
+                height: player.height - hitboxReduction * 2
+            };
+
+            // Cave bat collisions
+            for (const bat of caveBats) {
+                if (playerHitbox.x < bat.x + bat.width &&
+                    playerHitbox.x + playerHitbox.width > bat.x &&
+                    playerHitbox.y < bat.y + bat.height &&
+                    playerHitbox.y + playerHitbox.height > bat.y) {
+                    takeDamage();
+                    return;
+                }
+            }
+
+            // Rock hazard collisions
+            for (const rock of rockHazards) {
+                if (playerHitbox.x < rock.x + rock.width &&
+                    playerHitbox.x + playerHitbox.width > rock.x &&
+                    playerHitbox.y < rock.y + rock.height &&
+                    playerHitbox.y + playerHitbox.height > rock.y) {
+                    takeDamage();
+                    return;
+                }
+            }
+
+            // Wall collisions
+            for (const wall of caveWalls) {
+                if (playerHitbox.x < wall.x + 25 && playerHitbox.x + playerHitbox.width > wall.x) {
+                    if (playerHitbox.y < wall.topHeight || 
+                        playerHitbox.y + playerHitbox.height > canvas.height - wall.bottomHeight) {
+                        takeDamage();
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Take damage
+        function takeDamage() {
+            lives--;
+            playSound(180, 0.4, 'sawtooth', 0.1);
+
+            // Explosion particles
+            for (let i = 0; i < 30; i++) {
+                particles.push({
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height / 2,
+                    velocityX: (Math.random() - 0.5) * 15,
+                    velocityY: (Math.random() - 0.5) * 15,
+                    life: 60,
+                    color: Math.random() < 0.5 ? '#ff4444' : '#ffaa00',
+                    size: Math.random() * 4 + 2
+                });
+            }
+
+            if (lives <= 0) {
+                gameOver();
+            }
+        }
+
+        // Draw jetpack character
+        function drawPlayer() {
+            const x = player.x;
+            const y = player.y;
+            const w = player.width;
+            const h = player.height;
+
+            ctx.save();
+
+            // Immunity shield effect that moves with player
+            if (player.isImmune) {
+                const shieldRadius = Math.max(w, h) / 2 + 8 + Math.sin(Date.now() * 0.01) * 3;
+
+                ctx.shadowColor = '#00ffcc';
+                ctx.shadowBlur = 25;
+
+                // Shield follows player position exactly
+                ctx.strokeStyle = 'rgba(0, 255, 204, 0.6)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(x + w/2, y + h/2, shieldRadius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(x + w/2, y + h/2, shieldRadius + 5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Flip for facing direction
+            if (player.facing < 0) {
+                ctx.scale(-1, 1);
+                ctx.translate(-x - w, 0);
+            }
+
+            // Character colors
+            const skinColor = '#ffdbac';
+            const suitColor = '#4169e1';
+            const jetpackColor = '#333';
+
+            // Enhanced jetpack
+            ctx.fillStyle = jetpackColor;
+            ctx.fillRect(x + 18, y + 6, 8, 20);
+
+            // Jetpack details
+            ctx.fillStyle = '#555';
+            ctx.fillRect(x + 19, y + 8, 6, 3);
+            ctx.fillRect(x + 19, y + 20, 6, 3);
+
+            // Enhanced jetpack flames
+            if (player.isThrusting) {
+                const flameLength = 12 + Math.sin(player.jetpackFlame) * 6;
+                const flameWidth = 4;
+
+                ctx.fillStyle = '#ff4400';
+                ctx.fillRect(x + 20 + (player.facing > 0 ? 6 : -flameLength-6), y + 22, flameLength, flameWidth);
+
+                ctx.fillStyle = '#ff8800';
+                ctx.fillRect(x + 20 + (player.facing > 0 ? 6 : -flameLength-6), y + 23, flameLength-2, flameWidth-2);
+
+                ctx.fillStyle = '#ffdd00';
+                ctx.fillRect(x + 20 + (player.facing > 0 ? 6 : -flameLength-6), y + 24, flameLength-4, flameWidth-4);
+            }
+
+            // Head
+            ctx.fillStyle = skinColor;
+            ctx.fillRect(x + 6, y + 2, 12, 10);
+
+            // Advanced helmet
+            ctx.fillStyle = 'rgba(100, 150, 255, 0.4)';
+            ctx.fillRect(x + 4, y, 16, 9);
+            ctx.strokeStyle = '#4169e1';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 4, y, 16, 9);
+
+            // Helmet visor reflection
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(x + 5, y + 1, 6, 3);
+
+            // Eyes through helmet
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x + 7, y + 4, 2, 2);
+            ctx.fillRect(x + 13, y + 4, 2, 2);
+
+            // Body suit with details
+            ctx.fillStyle = suitColor;
+            ctx.fillRect(x + 6, y + 12, 12, 16);
+
+            // Suit details
+            ctx.fillStyle = '#6495ed';
+            ctx.fillRect(x + 8, y + 14, 8, 2);
+            ctx.fillRect(x + 8, y + 20, 8, 2);
+
+            // Arms
+            const armSwing = player.isThrusting ? Math.sin(player.frame) * 3 : 0;
+            ctx.fillStyle = suitColor;
+            ctx.fillRect(x + 1, y + 14 + armSwing, 4, 10);
+            ctx.fillRect(x + 19, y + 14 - armSwing, 4, 10);
+
+            // Legs
+            const legMovement = Math.abs(player.velocityX) > 1 ? Math.sin(player.frame * 2) * 2 : 0;
+            ctx.fillStyle = suitColor;
+            ctx.fillRect(x + 7 + legMovement, y + 28, 4, 4);
+            ctx.fillRect(x + 13 - legMovement, y + 28, 4, 4);
+
+            // Enhanced boots
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x + 6 + legMovement, y + 30, 6, 2);
+            ctx.fillRect(x + 12 - legMovement, y + 30, 6, 2);
+
+            ctx.restore();
+        }
+
+        // Draw cave bats
+        function drawCaveBats() {
+            for (const bat of caveBats) {
+                const wingOffset = Math.sin(bat.wingFlap) * 5;
+
+                ctx.save();
+
+                // Enhanced bat body
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(bat.x + 10, bat.y + 6, 8, 6);
+
+                // Enhanced wings with animation
+                ctx.fillStyle = '#654321';
+                ctx.fillRect(bat.x, bat.y + 2 + wingOffset, 9, 5);
+                ctx.fillRect(bat.x + 19, bat.y + 2 + wingOffset, 9, 5);
+
+                // Wing membrane detail
+                ctx.fillStyle = 'rgba(101, 67, 33, 0.8)';
+                ctx.fillRect(bat.x + 1, bat.y + 3 + wingOffset, 7, 3);
+                ctx.fillRect(bat.x + 20, bat.y + 3 + wingOffset, 7, 3);
+
+                // Enhanced glowing eyes
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(bat.x + 11, bat.y + 7, 2, 2);
+                ctx.fillRect(bat.x + 15, bat.y + 7, 2, 2);
+
+                // Eye glow effect
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 6;
+                ctx.fillRect(bat.x + 11, bat.y + 7, 2, 2);
+                ctx.fillRect(bat.x + 15, bat.y + 7, 2, 2);
+
+                ctx.restore();
+            }
+        }
+
+        // Draw rock hazards
+        function drawRockHazards() {
+            for (const rock of rockHazards) {
+                ctx.save();
+
+                // Rotate rock
+                ctx.translate(rock.x + rock.width/2, rock.y + rock.height/2);
+                ctx.rotate(rock.rotation);
+
+                // Rock gradient
+                const rockGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, rock.width/2);
+                rockGradient.addColorStop(0, '#8B4513');
+                rockGradient.addColorStop(1, '#654321');
+
+                ctx.fillStyle = rockGradient;
+
+                // Draw irregular rock shape
+                ctx.beginPath();
+                ctx.moveTo(-rock.width/2, -rock.height/3);
+                ctx.lineTo(-rock.width/3, -rock.height/2);
+                ctx.lineTo(rock.width/3, -rock.height/2);
+                ctx.lineTo(rock.width/2, -rock.height/4);
+                ctx.lineTo(rock.width/2, rock.height/3);
+                ctx.lineTo(rock.width/4, rock.height/2);
+                ctx.lineTo(-rock.width/4, rock.height/2);
+                ctx.lineTo(-rock.width/2, rock.height/4);
+                ctx.closePath();
+                ctx.fill();
+
+                // Rock highlight
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
+                ctx.fillRect(-rock.width/2, -rock.height/2, rock.width/3, rock.height/4);
+
+                ctx.restore();
+            }
+        }
+
+        // Draw battery packs
+        function drawBatteryPacks() {
+            for (const battery of batteryPacks) {
+                if (battery.collected) continue;
+
+                ctx.save();
+
+                const pulseSize = battery.width + Math.sin(battery.pulse) * 2;
+                const pulseHeight = battery.height + Math.sin(battery.pulse * 1.2) * 1;
+
+                // Battery glow
+                ctx.shadowColor = '#00ff00';
+                ctx.shadowBlur = 15;
+
+                // Battery body
+                ctx.fillStyle = '#228B22';
+                ctx.fillRect(battery.x, battery.y, pulseSize, pulseHeight);
+
+                // Battery top
+                ctx.fillStyle = '#32CD32';
+                ctx.fillRect(battery.x + 4, battery.y - 3, pulseSize - 8, 4);
+
+                // Battery charge indicator
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(battery.x + 2, battery.y + 3, pulseSize - 4, 4);
+                ctx.fillRect(battery.x + 2, battery.y + 9, pulseSize - 4, 4);
+                ctx.fillRect(battery.x + 2, battery.y + 15, pulseSize - 4, 4);
+
+                // Plus symbol
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(battery.x + pulseSize/2 - 1, battery.y + pulseHeight/2 - 4, 2, 8);
+                ctx.fillRect(battery.x + pulseSize/2 - 4, battery.y + pulseHeight/2 - 1, 8, 2);
+
+                ctx.restore();
+            }
+        }
+
+        // Draw immunity shields
+        function drawImmunityShields() {
+            for (const shield of immunityShields) {
+                if (shield.collected) continue;
+
+                ctx.save();
+                ctx.translate(shield.x + shield.width/2, shield.y + shield.height/2);
+                ctx.rotate(shield.rotation);
+
+                const pulseSize = shield.width + Math.sin(shield.pulse) * 4;
+
+                ctx.shadowColor = '#00ffcc';
+                ctx.shadowBlur = 20;
+
+                ctx.strokeStyle = '#00ffcc';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    const x = Math.cos(angle) * (pulseSize / 2);
+                    const y = Math.sin(angle) * (pulseSize / 2);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+
+                ctx.fillStyle = 'rgba(0, 255, 204, 0.6)';
+                ctx.beginPath();
+                ctx.arc(0, 0, pulseSize / 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // Draw cave walls
+        function drawCaveWalls() {
+            for (const wall of caveWalls) {
+                const gradient = ctx.createLinearGradient(wall.x, 0, wall.x + 25, 0);
+                gradient.addColorStop(0, '#555');
+                gradient.addColorStop(0.3, '#333');
+                gradient.addColorStop(0.7, '#222');
+                gradient.addColorStop(1, '#111');
+
+                ctx.fillStyle = gradient;
+
+                // Top wall with roughness
+                ctx.beginPath();
+                ctx.moveTo(wall.x, 0);
+                ctx.lineTo(wall.x, wall.topHeight - wall.roughness);
+                ctx.lineTo(wall.x + 12, wall.topHeight);
+                ctx.lineTo(wall.x + 25, wall.topHeight - wall.roughness);
+                ctx.lineTo(wall.x + 25, 0);
+                ctx.closePath();
+                ctx.fill();
+
+                // Bottom wall with roughness
+                ctx.beginPath();
+                ctx.moveTo(wall.x, canvas.height);
+                ctx.lineTo(wall.x, canvas.height - wall.bottomHeight + wall.roughness);
+                ctx.lineTo(wall.x + 12, canvas.height - wall.bottomHeight);
+                ctx.lineTo(wall.x + 25, canvas.height - wall.bottomHeight + wall.roughness);
+                ctx.lineTo(wall.x + 25, canvas.height);
+                ctx.closePath();
+                ctx.fill();
+
+                // Wall highlights
+                ctx.fillStyle = 'rgba(150, 150, 150, 0.4)';
+                ctx.fillRect(wall.x, 0, 2, wall.topHeight);
+                ctx.fillRect(wall.x, canvas.height - wall.bottomHeight, 2, wall.bottomHeight);
+            }
+        }
+
+        // Draw all particles
+        function drawParticles() {
+            // Regular particles
+            for (const particle of particles) {
+                ctx.fillStyle = particle.color;
+                ctx.globalAlpha = particle.life / 60;
+                ctx.fillRect(particle.x, particle.y, particle.size || 3, particle.size || 3);
+            }
+
+            // Jetpack particles
+            for (const particle of jetpackParticles) {
+                ctx.fillStyle = particle.color;
+                ctx.globalAlpha = particle.life / 25;
+                ctx.fillRect(particle.x, particle.y, particle.size || 2, particle.size || 2);
+            }
+
+            // Immunity particles
+            for (const particle of immunityParticles) {
+                ctx.fillStyle = particle.color;
+                ctx.globalAlpha = particle.life / 40;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size || 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Battery particles
+            for (const particle of batteryParticles) {
+                ctx.fillStyle = particle.color;
+                ctx.globalAlpha = particle.life / 40;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size || 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.globalAlpha = 1;
+        }
+
+        // Draw background
+        function drawBackground() {
+            const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height));
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(0.7, '#0f0f1a');
+            gradient.addColorStop(1, '#000000');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Cave texture
+            ctx.fillStyle = 'rgba(100, 50, 20, 0.08)';
+            for (let i = 0; i < 120; i++) {
+                const x = (i * 137.5 + distance * 0.5) % canvas.width;
+                const y = (i * 67.3) % canvas.height;
+                const size = Math.random() * 3 + 1;
+                ctx.fillRect(x, y, size, size);
+            }
+
+            // Depth layers
+            for (let layer = 0; layer < 3; layer++) {
+                ctx.strokeStyle = `rgba(0, 100, 150, ${0.05 + layer * 0.02})`;
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 8; i++) {
+                    const x = (distance * (i + 1) * (0.1 + layer * 0.05)) % canvas.width;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // Update HUD
+        function updateHUD() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('distance').textContent = Math.floor(distance / 15);
+            document.getElementById('lives').textContent = lives;
+            document.getElementById('gameSpeed').textContent = speedMultiplier.toFixed(1);
+
+            const fuelPercent = (player.fuel / player.maxFuel) * 100;
+            document.getElementById('fuelBar').style.width = fuelPercent + '%';
+
+            if (player.isImmune) {
+                document.getElementById('immunityTimer').textContent = immunityTime;
+            }
+        }
+
+        // Main render function
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBackground();
+            drawCaveWalls();
+            drawBatteryPacks();
+            drawImmunityShields();
+            drawRockHazards();
+            drawCaveBats();
+            drawPlayer();
+            drawParticles();
+
+            updateHUD();
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (gameState === 'playing') {
+                gameTime++;
+
+                updatePlayer();
+                updateCaveBats();
+                updateRockHazards();
+                updateBatteryPacks();
+                updateImmunityShields();
+                updateParticles();
+                updateCaveWalls();
+
+                generateCaveWalls();
+                generateCaveBats();
+                generateRockHazards();
+                generateBatteryPacks();
+                generateImmunityShields();
+
+                checkCollisions();
+
+                // Dynamic speed increase
+                distance += gameSpeed;
+                speedMultiplier = 1 + (distance / 6000);
+                gameSpeed = baseGameSpeed * speedMultiplier;
+            }
+
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Game state functions
+        function startGame() {
+            initAudio();
+            gameState = 'playing';
+
+            // Start background music
+            startMusic('game');
+
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('gameHUD').style.display = 'flex';
+
+            // Reset game state
+            score = 0;
+            distance = 0;
+            lives = 3;
+            gameSpeed = baseGameSpeed;
+            speedMultiplier = 1.0;
+            batsAvoided = 0;
+            rocksAvoided = 0;
+            batteriesCollected = 0;
+            shieldsCollected = 0;
+            immunityTime = 0;
+            gameTime = 0;
+            batSpawnTimer = 0;
+            rockSpawnTimer = 0;
+
+            // Clear arrays
+            caveBats = [];
+            rockHazards = [];
+            batteryPacks = [];
+            immunityShields = [];
+            particles = [];
+            jetpackParticles = [];
+            immunityParticles = [];
+            batteryParticles = [];
+            caveWalls = [];
+
+            // Reset player
+            player.x = canvas.width * 0.1;
+            player.y = canvas.height * 0.5;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            player.fuel = 100;
+            player.frame = 0;
+            player.facing = 1;
+            player.isImmune = false;
+            player.immunityTimer = 0;
+
+            document.getElementById('immunityIndicator').style.display = 'none';
+
+            playSound(660, 0.3, 'sine', 0.08);
+        }
+
+        function gameOver() {
+            gameState = 'gameOver';
+            document.getElementById('gameHUD').style.display = 'none';
+
+            // Start menu music
+            startMusic('menu');
+
+            const finalDistance = Math.floor(distance / 15);
+            document.getElementById('finalScore').textContent = `Mission Score: ${score} points`;
+            document.getElementById('missionStats').innerHTML = `
+                <div style="text-align: left; display: inline-block;">
+                    <p>🚀 Distance Explored: ${finalDistance}m</p>
+                    <p>🦇 Bats Avoided: ${batsAvoided}</p>
+                    <p>🪨 Rocks Avoided: ${rocksAvoided}</p>
+                    <p>🔋 Batteries Collected: ${batteriesCollected}</p>
+                    <p>🛡️ Shields Used: ${shieldsCollected}</p>
+                    <p>⚡ Max Speed: ${speedMultiplier.toFixed(1)}x</p>
+                    <p>⏱️ Survival Time: ${Math.floor(gameTime / 60)}s</p>
+                </div>
+            `;
+            document.getElementById('gameOver').style.display = 'flex';
+
+            playSound(150, 1.8, 'sawtooth', 0.08);
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        function showStart() {
+            gameState = 'start';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('gameHUD').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'flex';
+
+            // Start menu music
+            startMusic('menu');
+        }
+
+        function showHowToPlay() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('howToPlayScreen').style.display = 'flex';
+        }
+
+        function hideHowToPlay() {
+            document.getElementById('howToPlayScreen').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'flex';
+        }
+
+        // Initialize everything
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            initControls();
+            startMusic('menu'); // Start with menu music
+            gameLoop();
+        });
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (gameState === 'playing') {
+                if (player.y > canvas.height - player.height) {
+                    player.y = canvas.height - player.height;
+                }
+            }
+        });
+
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    </script>
+</body>
+</html>

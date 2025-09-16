@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melody Weaver</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lamejs@1.2.1/lame.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            animation: bgPulse 10s ease-in-out infinite alternate;
+        }
+        @keyframes bgPulse {
+            0% { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); }
+            100% { background: linear-gradient(135deg, #e1bee7 0%, #f3e5f5 100%); }
+        }
+        .container {
+            max-width: 600px;
+            width: 90%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #6a1b9a;
+            font-weight: 600;
+            font-size: 2.5rem;
+            margin: 0 0 20px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        #instructions {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #4a148c;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        #instructions.active {
+            max-height: 200px;
+        }
+        #toggleInstructions {
+            background: #ab47bc;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            transition: transform 0.2s, background 0.3s;
+        }
+        #toggleInstructions:hover {
+            background: #8e24aa;
+            transform: translateY(-2px);
+        }
+        canvas {
+            width: 100%;
+            height: 300px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #ab47bc, #8e24aa);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s, box-shadow 0.3s;
+            position: relative;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        button:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4a148c;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        #score, #level {
+            text-align: center;
+            color: #4a148c;
+            font-weight: 600;
+            font-size: 1.2rem;
+            margin: 10px 0;
+        }
+        #feedback {
+            text-align: center;
+            color: #6a1b9a;
+            font-size: 0.9rem;
+            margin: 10px 0;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #feedback.show {
+            opacity: 1;
+        }
+        #tips {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: none;
+            color: #4a148c;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        #tutorial {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        #tutorial-content {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            color: #4a148c;
+        }
+        #tutorial-content button {
+            margin-top: 10px;
+            margin-left: 5px;
+        }
+        .highlight {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(171, 71, 188, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(171, 71, 188, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(171, 71, 188, 0); }
+        }
+        .branding {
+            text-align: center;
+            color: #6a1b9a;
+            font-size: 0.8rem;
+            font-weight: 400;
+            margin-top: 10px;
+            transition: color 0.3s;
+        }
+        .branding:hover {
+            color: #8e24aa;
+        }
+        @keyframes glow {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .note-glow {
+            animation: glow 0.5s ease-out;
+        }
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            button { padding: 10px 20px; font-size: 0.9rem; }
+            canvas { height: 250px; }
+            #tips, #tutorial-content { width: 80%; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="tutorial">
+        <div id="tutorial-content">
+            <h2>Welcome to Melody Weaver!</h2>
+            <p id="tutorial-text">Step 1: Click on the canvas to place a note. Try it now!</p>
+            <button id="tutorial-next">Next</button>
+            <button id="tutorial-skip">Skip</button>
+        </div>
+    </div>
+    <div class="container">
+        <h1>Melody Weaver</h1>
+        <button id="toggleInstructions" data-tooltip="Show/hide game instructions">Show Instructions</button>
+        <div id="instructions">
+            <p>Create melodies by clicking on the canvas to place notes. The vertical position sets the pitch, and the horizontal position sets the sequence. Notes connect left-to-right to form your tune. Earn +5 points for consonant intervals (harmonious note pairs). High scores unlock new levels!</p>
+        </div>
+        <div id="level">Level 1: Pentatonic</div>
+        <canvas id="canvas"></canvas>
+        <div id="feedback"></div>
+        <div class="buttons">
+            <button id="play" data-tooltip="Play your melody">Play Melody</button>
+            <button id="clear" data-tooltip="Clear all notes">Clear Canvas</button>
+            <button id="downloadMp3" data-tooltip="Download your melody as MP3">Download MP3</button>
+            <button id="next" style="display: none;" data-tooltip="Go to next level">Next Level</button>
+        </div>
+        <div id="score">Score: 0</div>
+        <div id="tips"></div>
+    </div>
+    <audio id="bg" autoplay loop src="https://www.fesliyanstudios.com/play-mp3/330"></audio>
+    <div class="branding">Powered By MrDino.Info</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const playBtn = document.getElementById('play');
+        const clearBtn = document.getElementById('clear');
+        const downloadMp3Btn = document.getElementById('downloadMp3');
+        const nextBtn = document.getElementById('next');
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const tipsEl = document.getElementById('tips');
+        const feedbackEl = document.getElementById('feedback');
+        const toggleInstructions = document.getElementById('toggleInstructions');
+        const instructions = document.getElementById('instructions');
+        const tutorial = document.getElementById('tutorial');
+        const tutorialText = document.getElementById('tutorial-text');
+        const tutorialNext = document.getElementById('tutorial-next');
+        const tutorialSkip = document.getElementById('tutorial-skip');
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        let notes = [];
+        let level = 0;
+        let tutorialStep = 0;
+        const scales = [
+            {name: 'Pentatonic', freq: [261.63, 293.66, 329.63, 392, 440], semitones: [0, 2, 4, 7, 9]},
+            {name: 'Major', freq: [261.63, 293.66, 329.63, 349.23, 392, 440, 493.88], semitones: [0, 2, 4, 5, 7, 9, 11]}
+        ];
+        const tips = [
+            "Great job on the pentatonic scale! This scale is known for its harmonious sound as it avoids dissonant half-steps, making almost any combination sound pleasant.",
+            "Well done with the major scale! Consonant intervals like thirds, fourths, fifths, and sixths create harmony, while seconds and tritones can add tension."
+        ];
+        const consonantIntervals = [0, 3, 4, 5, 7, 8, 9, 12];
+        const tutorialSteps = [
+            "Step 1: Click on the canvas to place a note. Try it now!",
+            "Step 2: Place another note to create a sequence. Notes connect left-to-right.",
+            "Step 3: Click 'Play Melody' to hear your tune!",
+            "Step 4: Earn points for harmonious note pairs. Try to unlock the next level!"
+        ];
+
+        function resizeCanvas() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = window.innerWidth <= 600 ? 250 : 300;
+            drawGrid();
+            drawNotes();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawGrid() {
+            const currentScale = scales[level];
+            const numNotes = currentScale.freq.length;
+            const heightPerNote = canvas.height / numNotes;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < numNotes; i++) {
+                const y = (i + 0.5) * heightPerNote;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.stroke();
+            }
+        }
+
+        function drawNotes() {
+            drawGrid();
+            const now = Date.now();
+            notes.forEach(note => {
+                ctx.beginPath();
+                ctx.arc(note.x, note.y, 10, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ab47bc';
+                ctx.fill();
+                if (now - note.placed < 500) {
+                    const scale = 1 + (0.5 * (500 - (now - note.placed)) / 500);
+                    ctx.beginPath();
+                    ctx.arc(note.x, note.y, 10 * scale, 0, 2 * Math.PI);
+                    ctx.strokeStyle = 'rgba(171, 71, 188, 0.5)';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeStyle = 'rgba(171, 71, 188, 0.2)';
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+        }
+
+        function animate() {
+            drawNotes();
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        function showFeedback(message) {
+            feedbackEl.textContent = message;
+            feedbackEl.classList.add('show');
+            setTimeout(() => feedbackEl.classList.remove('show'), 2000);
+        }
+
+        function updateTutorial() {
+            tutorialText.textContent = tutorialSteps[tutorialStep];
+            canvas.classList.remove('highlight');
+            playBtn.classList.remove('highlight');
+            if (tutorialStep === 0 || tutorialStep === 1) {
+                canvas.classList.add('highlight');
+            } else if (tutorialStep === 2) {
+                playBtn.classList.add('highlight');
+            }
+            if (tutorialStep === tutorialSteps.length - 1) {
+                tutorialNext.textContent = 'Start Playing!';
+            }
+        }
+
+        canvas.addEventListener('click', e => {
+            if (tutorialStep === 0) {
+                tutorialStep++;
+                updateTutorial();
+            } else if (tutorialStep === 1 && notes.length === 1) {
+                tutorialStep++;
+                updateTutorial();
+            }
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const currentScale = scales[level];
+            const numNotes = currentScale.freq.length;
+            const heightPerNote = canvas.height / numNotes;
+            const pitchIndex = Math.round((canvas.height - y) / heightPerNote);
+            const snappedY = canvas.height - (pitchIndex + 0.5) * heightPerNote;
+            const clampedIndex = Math.max(0, Math.min(numNotes - 1, pitchIndex));
+            const freq = currentScale.freq[clampedIndex];
+            notes.push({x, y: snappedY, pitch: freq, semitone: currentScale.semitones[clampedIndex], placed: Date.now()});
+            playNote(freq);
+            drawNotes();
+            showFeedback('Note placed!');
+            localStorage.setItem('melodyWeaverTune', JSON.stringify(notes.map(note => ({pitch: note.pitch, semitone: note.semitone}))));
+        });
+
+        function playNote(freq, duration = 0.5) {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = freq;
+            oscillator.type = 'sine';
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.01);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.1);
+            gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
+            oscillator.start();
+            setTimeout(() => oscillator.stop(), duration * 1000 + 100);
+        }
+
+        function generateAudioBuffer(notes, duration = 0.5) {
+            notes.sort((a, b) => a.x - b.x);
+            const sampleRate = audioCtx.sampleRate;
+            const totalDuration = notes.length * duration;
+            const buffer = audioCtx.createBuffer(1, totalDuration * sampleRate, sampleRate);
+            const channelData = buffer.getChannelData(0);
+            let offset = 0;
+
+            notes.forEach(note => {
+                const samples = duration * sampleRate;
+                for (let i = 0; i < samples; i++) {
+                    const t = i / sampleRate;
+                    const amplitude = t < 0.01 ? t / 0.01 : t < 0.1 ? 0.3 + (1 - 0.3) * (0.1 - t) / 0.09 : 0.3 * (duration - t) / (duration - 0.1);
+                    channelData[offset + i] = Math.sin(2 * Math.PI * note.pitch * t) * amplitude;
+                }
+                offset += samples;
+            });
+
+            return buffer;
+        }
+
+        function bufferToMp3(buffer) {
+            const sampleRate = audioCtx.sampleRate;
+            const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
+            const channelData = buffer.getChannelData(0);
+            const samples = new Int16Array(channelData.length);
+            for (let i = 0; i < channelData.length; i++) {
+                samples[i] = channelData[i] * 32767;
+            }
+            const mp3Data = [];
+            const blockSize = 1152;
+            for (let i = 0; i < samples.length; i += blockSize) {
+                const sampleChunk = samples.subarray(i, i + blockSize);
+                const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
+                if (mp3buf.length > 0) {
+                    mp3Data.push(mp3buf);
+                }
+            }
+            const mp3buf = mp3encoder.flush();
+            if (mp3buf.length > 0) {
+                mp3Data.push(mp3buf);
+            }
+            return new Blob(mp3Data, {type: 'audio/mp3'});
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (notes.length < 2) {
+                showFeedback('Place at least two notes to play!');
+                return;
+            }
+            if (tutorialStep === 2) {
+                tutorialStep++;
+                updateTutorial();
+            }
+            notes.sort((a, b) => a.x - b.x);
+            let time = 0;
+            let score = 0;
+            notes.forEach((note, i) => {
+                setTimeout(() => playNote(note.pitch), time * 1000);
+                if (i > 0) {
+                    const interval = Math.abs(note.semitone - notes[i - 1].semitone);
+                    const normalizedInterval = Math.min(interval, 12 - interval);
+                    if (consonantIntervals.includes(normalizedInterval)) {
+                        score += 5;
+                    }
+                }
+                time += 0.5;
+            });
+            setTimeout(() => {
+                scoreEl.textContent = `Score: ${score} (${score / 5} stars)`;
+                showFeedback('Melody played!');
+                if (score > (notes.length - 1) * 3 && level < scales.length - 1) {
+                    tipsEl.textContent = tips[level];
+                    tipsEl.style.display = 'block';
+                    nextBtn.style.display = 'inline-block';
+                }
+            }, time * 1000);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            notes = [];
+            drawNotes();
+            scoreEl.textContent = 'Score: 0';
+            tipsEl.style.display = 'none';
+            nextBtn.style.display = 'none';
+            showFeedback('Canvas cleared!');
+            localStorage.removeItem('melodyWeaverTune');
+        });
+
+        downloadMp3Btn.addEventListener('click', () => {
+            if (notes.length === 0) {
+                showFeedback('No notes to download!');
+                return;
+            }
+            const buffer = generateAudioBuffer(notes);
+            const mp3Blob = bufferToMp3(buffer);
+            const url = URL.createObjectURL(mp3Blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'melody_weaver_tune.mp3';
+            a.click();
+            URL.revokeObjectURL(url);
+            showFeedback('MP3 downloaded!');
+        });
+
+        nextBtn.addEventListener('click', () => {
+            level++;
+            levelEl.textContent = `Level ${level + 1}: ${scales[level].name}`;
+            notes = [];
+            drawNotes();
+            tipsEl.style.display = 'none';
+            nextBtn.style.display = 'none';
+            scoreEl.textContent = 'Score: 0';
+            showFeedback('Level advanced!');
+            localStorage.removeItem('melodyWeaverTune');
+        });
+
+        toggleInstructions.addEventListener('click', () => {
+            instructions.classList.toggle('active');
+            toggleInstructions.textContent = instructions.classList.contains('active') ? 'Hide Instructions' : 'Show Instructions';
+        });
+
+        tutorialNext.addEventListener('click', () => {
+            if (tutorialStep < tutorialSteps.length - 1) {
+                tutorialStep++;
+                updateTutorial();
+            } else {
+                tutorial.style.display = 'none';
+            }
+        });
+
+        tutorialSkip.addEventListener('click', () => {
+            tutorial.style.display = 'none';
+        });
+
+        document.getElementById('bg').play().catch(e => console.log('Autoplay prevented:', e));
+    </script>
+</body>
+</html>
